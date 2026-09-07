@@ -1,0 +1,389 @@
+[
+  {
+    "query_id": "Q001",
+    "query_text": "customer charged twice for the same subscription this month",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "billing"
+    ],
+    "relevant_keywords": [
+      "double charge",
+      "subscription issue",
+      "billing dispute"
+    ],
+    "notes": "Should retrieve billing tickets mentioning double-charge or duplicate payment"
+  },
+  {
+    "query_id": "Q002",
+    "query_text": "what is the policy for refunding an incorrect invoice",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "refund_policy.md",
+      "sla_policy.md"
+    ],
+    "relevant_keywords": [
+      "refund",
+      "billing",
+      "invoice"
+    ],
+    "notes": "Should retrieve refund_policy.md and sla_policy.md billing section"
+  },
+  {
+    "query_id": "Q003",
+    "query_text": "billing dispute escalation rules and required approvals",
+    "source_type": "mixed",
+    "relevant_source_ids": [
+      "escalation_policy.md",
+      "refund_policy.md"
+    ],
+    "relevant_categories": [
+      "billing"
+    ],
+    "relevant_keywords": [
+      "escalation",
+      "billing",
+      "approval"
+    ],
+    "notes": "Mixed query - should get escalation policy AND billing tickets"
+  },
+  {
+    "query_id": "Q004",
+    "query_text": "customer says their payment failed but they were still charged",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "billing"
+    ],
+    "relevant_keywords": [
+      "payment failed",
+      "charged",
+      "billing"
+    ],
+    "notes": "Billing ticket retrieval - payment contradiction scenario"
+  },
+  {
+    "query_id": "Q005",
+    "query_text": "how long does the company have to respond to billing complaints under SLA",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "sla_policy.md"
+    ],
+    "relevant_keywords": [
+      "billing",
+      "SLA",
+      "response",
+      "hours"
+    ],
+    "notes": "Policy retrieval - SLA for billing category"
+  },
+  {
+    "query_id": "Q006",
+    "query_text": "customer never received their package and tracking shows delivered",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "delivery"
+    ],
+    "relevant_keywords": [
+      "missing package",
+      "tracking",
+      "delivered"
+    ],
+    "notes": "Delivery ticket - missing package with tracking discrepancy"
+  },
+  {
+    "query_id": "Q007",
+    "query_text": "wrong item was sent to the customer - how do we handle this",
+    "source_type": "mixed",
+    "relevant_source_ids": [
+      "team_routing.md",
+      "refund_policy.md"
+    ],
+    "relevant_categories": [
+      "delivery"
+    ],
+    "relevant_keywords": [
+      "wrong item",
+      "delivery"
+    ],
+    "notes": "Mixed - routing policy + delivery tickets"
+  },
+  {
+    "query_id": "Q008",
+    "query_text": "goods arrived damaged what is the refund eligibility",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "refund_policy.md"
+    ],
+    "relevant_keywords": [
+      "damaged",
+      "delivery",
+      "refund",
+      "eligibility"
+    ],
+    "notes": "Policy retrieval - refund for damaged goods"
+  },
+  {
+    "query_id": "Q009",
+    "query_text": "delivery delayed because of third party logistics provider",
+    "source_type": "mixed",
+    "relevant_source_ids": [
+      "sla_policy.md"
+    ],
+    "relevant_categories": [
+      "delivery"
+    ],
+    "relevant_keywords": [
+      "delivery",
+      "delayed",
+      "third-party",
+      "logistics"
+    ],
+    "notes": "SLA policy note about third-party + delivery tickets"
+  },
+  {
+    "query_id": "Q010",
+    "query_text": "product stopped working after one week of use - possible manufacturing defect",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "product_defect"
+    ],
+    "relevant_keywords": [
+      "malfunction",
+      "defect",
+      "one week",
+      "not working"
+    ],
+    "notes": "Product defect ticket retrieval"
+  },
+  {
+    "query_id": "Q011",
+    "query_text": "software keeps crashing on startup repeatedly for multiple users",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "product_defect"
+    ],
+    "relevant_keywords": [
+      "software crash",
+      "not working",
+      "defect"
+    ],
+    "notes": "Product defect - software crash tickets"
+  },
+  {
+    "query_id": "Q012",
+    "query_text": "what team handles product quality and engineering defect escalations",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "team_routing.md"
+    ],
+    "relevant_keywords": [
+      "Quality Team",
+      "Engineering Team",
+      "product_defect",
+      "routing"
+    ],
+    "notes": "Policy - team routing for product defects"
+  },
+  {
+    "query_id": "Q013",
+    "query_text": "how long is the warranty refund period for defective products",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "refund_policy.md"
+    ],
+    "relevant_keywords": [
+      "product_defect",
+      "refund",
+      "90 days",
+      "eligibility"
+    ],
+    "notes": "Refund policy - product defect 90-day window"
+  },
+  {
+    "query_id": "Q014",
+    "query_text": "customer locked out of their account after multiple failed login attempts",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "account_access"
+    ],
+    "relevant_keywords": [
+      "account locked",
+      "cannot login",
+      "login attempts"
+    ],
+    "notes": "Account access ticket - locked out scenario"
+  },
+  {
+    "query_id": "Q015",
+    "query_text": "two factor authentication not working customer cannot receive code",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "account_access"
+    ],
+    "relevant_keywords": [
+      "two-factor",
+      "auth",
+      "code",
+      "email not received"
+    ],
+    "notes": "Account access ticket - 2FA failure"
+  },
+  {
+    "query_id": "Q016",
+    "query_text": "what are the SLA requirements for account security issues",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "sla_policy.md",
+      "team_routing.md"
+    ],
+    "relevant_keywords": [
+      "account_access",
+      "security",
+      "SLA",
+      "30 minutes"
+    ],
+    "notes": "Policy - SLA for account access (30 min first response)"
+  },
+  {
+    "query_id": "Q017",
+    "query_text": "customer account was suspended incorrectly by the system",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "account_access"
+    ],
+    "relevant_keywords": [
+      "account suspended wrongly",
+      "suspended",
+      "incorrectly"
+    ],
+    "notes": "Account access - wrongful suspension"
+  },
+  {
+    "query_id": "Q018",
+    "query_text": "customer complained about rude and unhelpful support agent",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "service_quality"
+    ],
+    "relevant_keywords": [
+      "rude",
+      "agent",
+      "poor customer service"
+    ],
+    "notes": "Service quality ticket - agent behaviour complaint"
+  },
+  {
+    "query_id": "Q019",
+    "query_text": "customer waited over an hour and issue was not resolved",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "service_quality"
+    ],
+    "relevant_keywords": [
+      "long wait times",
+      "unresolved",
+      "no follow-up"
+    ],
+    "notes": "Service quality - wait time + unresolved"
+  },
+  {
+    "query_id": "Q020",
+    "query_text": "what goodwill refund can we offer for poor service experience",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "refund_policy.md"
+    ],
+    "relevant_keywords": [
+      "service_quality",
+      "goodwill",
+      "20%",
+      "partial"
+    ],
+    "notes": "Refund policy - goodwill partial refund for service quality"
+  },
+  {
+    "query_id": "Q021",
+    "query_text": "customer has contacted us 4 times this month about the same billing problem",
+    "source_type": "mixed",
+    "relevant_source_ids": [
+      "escalation_policy.md"
+    ],
+    "relevant_categories": [
+      "billing"
+    ],
+    "relevant_keywords": [
+      "repeat contact",
+      "escalation",
+      "billing",
+      "3 or more tickets"
+    ],
+    "notes": "Repeat complainer trigger - should retrieve escalation policy + billing tickets for this customer pattern"
+  },
+  {
+    "query_id": "Q022",
+    "query_text": "high priority ticket open for more than 24 hours without resolution",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "escalation_policy.md",
+      "sla_policy.md"
+    ],
+    "relevant_keywords": [
+      "high priority",
+      "open",
+      "24 hours",
+      "escalation trigger"
+    ],
+    "notes": "SLA breach + escalation trigger - both policies relevant"
+  },
+  {
+    "query_id": "Q023",
+    "query_text": "customer threatening legal action over unresolved complaint",
+    "source_type": "mixed",
+    "relevant_source_ids": [
+      "escalation_policy.md",
+      "team_routing.md"
+    ],
+    "relevant_categories": [
+      "service_quality",
+      "billing"
+    ],
+    "relevant_keywords": [
+      "legal",
+      "threat",
+      "L3",
+      "Legal & Compliance"
+    ],
+    "notes": "Legal threat - escalation to L3, route to Legal team"
+  },
+  {
+    "query_id": "Q024",
+    "query_text": "what data can the AI system access when reviewing customer tickets",
+    "source_type": "policy",
+    "relevant_source_ids": [
+      "data_handling_policy.md"
+    ],
+    "relevant_keywords": [
+      "AI System",
+      "FlowMind",
+      "data access",
+      "restrictions",
+      "RBAC"
+    ],
+    "notes": "Data handling policy - AI system permissions"
+  },
+  {
+    "query_id": "Q025",
+    "query_text": "open high priority billing tickets with SLA breach that need escalation",
+    "source_type": "ticket",
+    "relevant_categories": [
+      "billing"
+    ],
+    "relevant_keywords": [
+      "billing",
+      "high",
+      "open",
+      "sla_breach",
+      "escalation"
+    ],
+    "notes": "Complex filter query - billing + high priority + SLA breach + open status"
+  }
+]
