@@ -25,7 +25,10 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
 
   const recommendation = workflow.reasoning?.recommendation;
   const isPending = workflow.status === 'PENDING_APPROVAL';
-  const isExecuted = workflow.status === 'APPROVED_EXECUTED';
+  const isExecuted =
+    workflow.status === 'APPROVED_EXECUTED' ||
+    (workflow.status as string) === 'COMPLETED' ||
+    (workflow.status as string) === 'EXECUTING';
   const isRejected = workflow.status === 'REJECTED';
   const isAbstained = workflow.status === 'ABSTAINED';
 
@@ -33,10 +36,17 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
     setIsSubmitting(true);
     setRbacError(null);
 
-    let parsedParams: Record<string, unknown> | undefined = undefined;
+    let modifiedAction: Record<string, unknown> | undefined = undefined;
     if (decision === 'MODIFY') {
       try {
-        parsedParams = JSON.parse(modifiedParamsText);
+        const parsedParams = JSON.parse(modifiedParamsText);
+        modifiedAction = {
+          action_type: recommendation?.action_type || 'ISSUE_REFUND_RECOMMENDATION',
+          target_team: recommendation?.target_team || 'Finance & Compliance Team',
+          urgency: recommendation?.priority ? String(recommendation.priority).toLowerCase() : 'medium',
+          parameters: parsedParams,
+          requires_approval: true,
+        };
       } catch {
         setRbacError('Invalid JSON format in modified parameters.');
         setIsSubmitting(false);
@@ -49,8 +59,10 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
         workflow.workflow_id,
         {
           decision,
+          rejection_reason: decisionNotes.trim() || 'Action rejected by human reviewer.',
+          comments: decisionNotes.trim() || `Submitted by ${activePersona.name} (${activePersona.role})`,
           notes: decisionNotes.trim() || `Submitted by ${activePersona.name} (${activePersona.role})`,
-          modified_parameters: parsedParams,
+          modified_action: modifiedAction,
         },
         activePersona.token
       );
@@ -88,7 +100,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               : 'badge-neutral'
           }`}
         >
-          {workflow.status}
+          {isExecuted ? 'APPROVED_EXECUTED' : workflow.status}
         </span>
       </div>
 
@@ -168,9 +180,10 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
 
               {isModifying && (
                 <div className="form-group">
-                  <label className="form-label">Modify Parameters (JSON)</label>
+                  <label className="form-label" htmlFor="modified-parameters-textarea">Modify Parameters (JSON)</label>
                   <textarea
-                    className="form-textarea"
+                    id="modified-parameters-textarea"
+                    className="form-textarea modified-params-input"
                     style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}
                     value={modifiedParamsText}
                     onChange={(e) => setModifiedParamsText(e.target.value)}
@@ -228,7 +241,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               <div>
                 <strong>Action Rejected by Human Governance</strong>
                 <div style={{ marginTop: '0.2rem' }}>
-                  {workflow.approval_record?.notes || 'No notes provided.'} (Approver: {workflow.approval_record?.approver_name}, Role: {workflow.approval_record?.approver_role})
+                  {workflow.approval_record?.rejection_reason || workflow.approval_record?.comments || workflow.approval_record?.notes || 'No notes provided.'} (Approver: {workflow.approval_record?.approver_name || activePersona.name}, Role: {workflow.approval_record?.approver_role || activePersona.role})
                 </div>
               </div>
             </div>

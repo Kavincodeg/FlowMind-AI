@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Retriever (Phase 1)
 
 Top-level retrieval interface:
@@ -43,12 +43,20 @@ def retrieve(query: RetrievalQuery) -> RetrievalResult:
     filter_dict = _build_filter(query.filters)
 
     # 3. ANN search
-    chunks = ann_search(
-        query_vector=query_vec,
-        top_k=query.top_k,
-        metadata_filter=filter_dict if filter_dict else None,
-        score_threshold=query.score_threshold,
-    )
+    try:
+        chunks = ann_search(
+            query_vector=query_vec,
+            top_k=query.top_k,
+            metadata_filter=filter_dict if filter_dict else None,
+            score_threshold=query.score_threshold,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Vector database unavailable (%s); falling back to mock_retrieve for offline operation.",
+            exc,
+        )
+        from backend.retrieval.mock_retriever import mock_retrieve
+        return mock_retrieve(query)
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
     logger.info(

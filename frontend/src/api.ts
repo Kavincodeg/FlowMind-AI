@@ -110,16 +110,27 @@ export const api = {
     workflowId: string,
     submission: {
       decision: 'APPROVE' | 'REJECT' | 'MODIFY';
-      notes: string;
-      modified_parameters?: Record<string, unknown>;
+      notes?: string;
+      rejection_reason?: string;
+      modified_action?: Record<string, unknown>;
+      comments?: string;
     },
     token: string,
   ): Promise<WorkflowInstance> => {
+    const payload: Record<string, unknown> = {
+      decision: submission.decision,
+      comments: submission.comments || submission.notes || '',
+    };
+    if (submission.decision === 'REJECT') {
+      payload.rejection_reason = submission.rejection_reason || submission.notes || 'Action rejected by reviewer.';
+    } else if (submission.decision === 'MODIFY') {
+      payload.modified_action = submission.modified_action;
+    }
     return request(
       `/api/workflow/${workflowId}/decision`,
       {
         method: 'POST',
-        body: JSON.stringify(submission),
+        body: JSON.stringify(payload),
       },
       token,
     );

@@ -56,11 +56,14 @@ export interface ReasoningOutput {
 
 export interface ApprovalRecord {
   approver_id: string;
-  approver_name: string;
+  approver_name?: string;
   approver_role: string;
   decision: 'APPROVE' | 'REJECT' | 'MODIFY';
-  notes: string;
-  submitted_at: string;
+  notes?: string;
+  rejection_reason?: string;
+  comments?: string;
+  submitted_at?: string;
+  timestamp?: string;
   authorized?: boolean;
 }
 
