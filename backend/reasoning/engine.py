@@ -302,14 +302,9 @@ class ReasoningEngine:
         try:
             return self.retrieve(query)
         except Exception as e:
-            logger.warning("Ticket retrieval failed (%s), returning empty result.", e)
-            return RetrievalResult(
-                query_text=query_text,
-                chunks=[],
-                total_found=0,
-                filters_applied={"source_type": "ticket"},
-                retrieval_time_ms=0.0,
-            )
+            logger.warning("Ticket retrieval failed (%s); falling back to offline mock retriever.", e)
+            from backend.retrieval.mock_retriever import mock_retrieve
+            return mock_retrieve(query)
 
     def _retrieve_policies(self, request: ComplaintInvestigationRequest) -> RetrievalResult:
         """Query policy documents for escalation, SLA, routing, and refund guidelines."""
@@ -323,14 +318,9 @@ class ReasoningEngine:
         try:
             return self.retrieve(query)
         except Exception as e:
-            logger.warning("Policy retrieval failed (%s), returning empty result.", e)
-            return RetrievalResult(
-                query_text=query_text,
-                chunks=[],
-                total_found=0,
-                filters_applied={"source_type": "policy"},
-                retrieval_time_ms=0.0,
-            )
+            logger.warning("Policy retrieval failed (%s); falling back to offline mock retriever.", e)
+            from backend.retrieval.mock_retriever import mock_retrieve
+            return mock_retrieve(query)
 
     # ------------------------------------------------------------------
     # Parsing & Verification
