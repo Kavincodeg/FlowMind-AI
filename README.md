@@ -1,4 +1,4 @@
-﻿# FlowMind AI
+# FlowMind AI
 
 > Enterprise Workflow AI Agent — Final Year Engineering Project
 
@@ -110,10 +110,7 @@ result.combined_context       [formatted text block for LLM — Phase 2]
 
 | Phase | Status | Description |
 |---|---|---|
-| 1 — Retrieval | ✅ **Complete** | Ingest, chunk, embed, store, retrieve |
-| 2 — Reasoning | ⏳ Pending | Evidence-grounded recommendation |
-| 3 — RAG Baseline | ⏳ Pending | Comparison system (retrieve + answer only) |
-| 4 — Orchestration | ⏳ Pending | Intent routing, workflow state |
-| 5 — Approval UI + RBAC | ⏳ Pending | Human-in-the-loop, auth |
-| 6 — Mock Connector + Audit | ⏳ Pending | Execution + full audit log |
-| 7 — Evaluation Harness | ⏳ Pending | Metrics + benchmarks |
+| 1 — Retrieval Foundation | ✅ **Complete** | Ingest, chunk, embed, store, retrieve with citations |
+| 2 — Reasoning & Plain-RAG Baseline | ✅ **Complete** | Evidence-grounded recommendation + Plain-RAG comparison baseline |
+| 3 — Approval, Execution & Audit | ⏳ Pending | Orchestration, approval UI, RBAC, mock connector, audit logging |
+| 4 — Evaluation & Benchmarking | ⏳ Pending | Closed-loop metrics, benchmarks, human evaluation |
