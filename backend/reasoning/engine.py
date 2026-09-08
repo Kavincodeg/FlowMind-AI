@@ -59,8 +59,27 @@ class ReasoningEngine:
         t0 = time.perf_counter()
 
         # Step 1: Pre-retrieval dual-path queries
-        ticket_result = self._retrieve_tickets(request)
-        policy_result = self._retrieve_policies(request)
+        try:
+            ticket_result = self._retrieve_tickets(request)
+            policy_result = self._retrieve_policies(request)
+        except Exception as exc:
+            elapsed_ms = (time.perf_counter() - t0) * 1000
+            logger.error("Retrieval infrastructure failure: %s", exc)
+            return ReasoningOutput(
+                status="ERROR",
+                abstention_reason=None,
+                customer_summary="Evidence retrieval failed.",
+                identified_root_cause=f"Retrieval infrastructure unavailable: {exc}",
+                recommendation=None,
+                rationale=f"Retrieval infrastructure failure prevented evidence lookup: {exc}",
+                citations=[],
+                confidence_score=0.0,
+                requires_human_approval=False,
+                indirect_injection_detected=False,
+                retrieval_summary={"retrieval_error": str(exc)},
+                reasoning_time_ms=round(elapsed_ms, 2),
+                model_used=self.llm_provider.__class__.__name__,
+            )
 
         total_chunks = len(ticket_result.chunks) + len(policy_result.chunks)
         retrieval_ms = ticket_result.retrieval_time_ms + policy_result.retrieval_time_ms
@@ -299,12 +318,7 @@ class ReasoningEngine:
             filters=MetadataFilter(source_type="ticket"),
             score_threshold=0.25,
         )
-        try:
-            return self.retrieve(query)
-        except Exception as e:
-            logger.warning("Ticket retrieval failed (%s); falling back to offline mock retriever.", e)
-            from backend.retrieval.mock_retriever import mock_retrieve
-            return mock_retrieve(query)
+        return self.retrieve(query)
 
     def _retrieve_policies(self, request: ComplaintInvestigationRequest) -> RetrievalResult:
         """Query policy documents for escalation, SLA, routing, and refund guidelines."""
@@ -315,12 +329,7 @@ class ReasoningEngine:
             filters=MetadataFilter(source_type="policy"),
             score_threshold=0.25,
         )
-        try:
-            return self.retrieve(query)
-        except Exception as e:
-            logger.warning("Policy retrieval failed (%s); falling back to offline mock retriever.", e)
-            from backend.retrieval.mock_retriever import mock_retrieve
-            return mock_retrieve(query)
+        return self.retrieve(query)
 
     # ------------------------------------------------------------------
     # Parsing & Verification

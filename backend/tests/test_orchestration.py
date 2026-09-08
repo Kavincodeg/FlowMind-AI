@@ -24,6 +24,7 @@ from backend.reasoning.models import (
     EscalationLevel,
     NextBestAction,
 )
+from backend.retrieval.mock_retriever import mock_retrieve
 from backend.security.models import PRECONFIGURED_PERSONAS, UserContext, UserRole
 from backend.security.rbac import RBACPermissionDeniedError
 
@@ -32,7 +33,9 @@ from backend.security.rbac import RBACPermissionDeniedError
 def test_setup():
     audit_service = AuditService()
     connector = MockEnterpriseConnector(simulate_latency_ms=0.0)
+    reasoning_engine = ReasoningEngine(retriever_fn=mock_retrieve)
     orchestrator = WorkflowOrchestrator(
+        reasoning_engine=reasoning_engine,
         connector=connector,
         audit_service=audit_service,
     )
@@ -260,3 +263,53 @@ class TestWorkflowStateTransitions:
 
         with pytest.raises(UnauthorizedExecutionError, match="cannot execute without human approval verification"):
             connector.execute(unauthorized_req)
+
+    def test_retrieval_infrastructure_failure_transitions_to_failed(self):
+        """
+        Prove requirement 4: When retriever raises a connection error (simulating DB outage),
+        workflow transitions to FAILED (never PENDING_APPROVAL, AUTO_EXECUTED, or COMPLETED).
+        No recommendation, citations, or execution are produced, and audit record reflects FAILED.
+        """
+        def failing_retriever(query):
+            raise ConnectionError("connection to server at localhost:5432 failed: Connection refused")
+
+        failing_engine = ReasoningEngine(retriever_fn=failing_retriever)
+        audit_service = AuditService()
+        connector = MockEnterpriseConnector(simulate_latency_ms=0.0)
+        orch = WorkflowOrchestrator(
+            reasoning_engine=failing_engine,
+            connector=connector,
+            audit_service=audit_service,
+        )
+        agent = PRECONFIGURED_PERSONAS["flowmind-agent-token-001"]
+
+        req = ComplaintInvestigationRequest(
+            customer_id="CUST-1002",
+            customer_name="Arjun Sharma",
+            issue_summary="Damaged goods complaint during DB outage.",
+        )
+        instance = orch.start_investigation(req, requester=agent)
+
+        # 1. Assert terminal status is FAILED
+        assert instance.status == WorkflowStatus.FAILED
+        assert instance.status != WorkflowStatus.PENDING_APPROVAL
+        assert instance.status != WorkflowStatus.AUTO_EXECUTED
+        assert instance.status != WorkflowStatus.COMPLETED
+
+        # 2. Assert no recommendation, citations, or execution produced
+        assert instance.reasoning_output is not None
+        assert instance.reasoning_output.status == "ERROR"
+        assert "Retrieval infrastructure unavailable" in instance.reasoning_output.identified_root_cause
+        assert instance.reasoning_output.recommendation is None
+        assert instance.reasoning_output.citations == []
+        assert instance.execution_record is None
+        assert instance.approval_record is None
+
+        # 3. Assert audit record reflects FAILED / retrieval-error terminal state
+        audit = audit_service.get_audit(instance.workflow_id)
+        assert audit is not None
+        assert audit.terminal_state == "FAILED"
+        assert "Retrieval infrastructure unavailable" in audit.reasoning_output["root_cause"]
+        assert audit.execution_record is None
+        assert audit.approval_record is None
+

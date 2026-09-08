@@ -10,6 +10,11 @@ from fastapi.testclient import TestClient
 import pytest
 
 from backend.api.main import app
+from backend.audit.service import AuditService, get_audit_service
+from backend.connectors.mock_connector import MockEnterpriseConnector
+from backend.orchestrator.orchestrator import WorkflowOrchestrator, get_orchestrator
+from backend.reasoning.engine import ReasoningEngine
+from backend.retrieval.mock_retriever import mock_retrieve
 
 client = TestClient(app)
 
@@ -17,6 +22,21 @@ AGENT_TOKEN = "flowmind-agent-token-001"
 LEAD_TOKEN = "flowmind-lead-token-002"
 MGR_TOKEN = "flowmind-mgr-token-003"
 ADMIN_TOKEN = "flowmind-admin-token-004"
+
+
+@pytest.fixture(autouse=True)
+def setup_test_orchestrator():
+    """Explicitly configure the test orchestrator to use mock_retrieve for offline test execution."""
+    test_audit_service = AuditService()
+    test_orch = WorkflowOrchestrator(
+        reasoning_engine=ReasoningEngine(retriever_fn=mock_retrieve),
+        connector=MockEnterpriseConnector(simulate_latency_ms=0.0),
+        audit_service=test_audit_service,
+    )
+    app.dependency_overrides[get_orchestrator] = lambda: test_orch
+    app.dependency_overrides[get_audit_service] = lambda: test_audit_service
+    yield test_orch
+    app.dependency_overrides.clear()
 
 
 class TestAuthAndPersonaEndpoints:
