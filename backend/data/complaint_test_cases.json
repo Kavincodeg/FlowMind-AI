@@ -251,5 +251,268 @@
       "requires_approval": true,
       "expect_citations": ["escalation_policy.md"]
     }
+  },
+  {
+    "case_id": "CASE-016",
+    "category": "repeat_complaint_escalation",
+    "description": "Customer reporting hardware device defect for third time",
+    "request": {
+      "customer_id": "CUST-1070",
+      "customer_name": "Liam Davies",
+      "issue_summary": "Customer device has overheated and crashed. This is the third time contacting support about this recurring defect without resolution."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L2",
+      "target_team": "Engineering Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-017",
+    "category": "repeat_complaint_escalation",
+    "description": "Customer reporting repeated overcharge on subscription",
+    "request": {
+      "customer_id": "CUST-1071",
+      "customer_name": "Sophia Zhang",
+      "issue_summary": "Customer states credit card was overcharged for the third time in four months. Repeated billing dispute."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L2",
+      "target_team": "Finance & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-018",
+    "category": "repeat_complaint_escalation",
+    "description": "Customer reporting recurring account lockout",
+    "request": {
+      "customer_id": "CUST-1072",
+      "customer_name": "Michael Brown",
+      "issue_summary": "Customer locked out of enterprise portal for the fourth time this week. Repeated authentication failure."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L2",
+      "target_team": "Engineering Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-019",
+    "category": "legal_threat_escalation",
+    "description": "Customer threatening regulatory trade commission complaint",
+    "request": {
+      "customer_id": "CUST-1073",
+      "customer_name": "Victoria Sterling",
+      "issue_summary": "Customer states that unless compensation is provided they are lodging a formal complaint with the regulatory trade commission and attorney."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L3",
+      "target_team": "Legal & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-020",
+    "category": "legal_threat_escalation",
+    "description": "Attorney notice regarding breach of contract",
+    "request": {
+      "customer_id": "CUST-1074",
+      "customer_name": "Jonathan Reed",
+      "issue_summary": "Customer's lawyer has sent an official legal action notice for breach of contract regarding service disruption."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L3",
+      "target_team": "Legal & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-021",
+    "category": "legal_threat_escalation",
+    "description": "Customer threatening court proceedings for privacy violation",
+    "request": {
+      "customer_id": "CUST-1075",
+      "customer_name": "Chloe Bennett",
+      "issue_summary": "Customer alleges unauthorized sharing of personal records and states they will consult an attorney and initiate court proceedings."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L3",
+      "target_team": "Legal & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-022",
+    "category": "sla_breach_escalation",
+    "description": "High priority logistics order past SLA deadline",
+    "request": {
+      "customer_id": "CUST-1076",
+      "customer_name": "Omar Farooq",
+      "issue_summary": "Urgent shipment delayed 5 days past deadline. Ticket shows sla_breach: true with priority: high."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L2",
+      "target_team": "Operations Manager",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md", "sla_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-023",
+    "category": "sla_breach_escalation",
+    "description": "Standard SLA breach on single billing query",
+    "request": {
+      "customer_id": "CUST-1077",
+      "customer_name": "Rachel Adams",
+      "issue_summary": "Billing query ticket open for 5 days without response, exceeding standard SLA deadline. Status shows single ticket sla breach."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ESCALATE_TICKET",
+      "escalation_level": "L1",
+      "target_team": "Billing Team",
+      "requires_approval": true,
+      "expect_citations": ["escalation_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-024",
+    "category": "duplicate_billing_refund",
+    "description": "Customer charged twice for annual license",
+    "request": {
+      "customer_id": "CUST-1078",
+      "customer_name": "Daniel Kim",
+      "issue_summary": "Customer charged twice on their invoice for an annual enterprise license. Confirmed duplicate charge billing dispute."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ISSUE_REFUND_RECOMMENDATION",
+      "escalation_level": "L1",
+      "target_team": "Finance & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["refund_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-025",
+    "category": "duplicate_billing_refund",
+    "description": "Double charge on monthly billing renewal",
+    "request": {
+      "customer_id": "CUST-1079",
+      "customer_name": "Aisha Patel",
+      "issue_summary": "Customer credit card statement reflects duplicate charge for monthly subscription renewal. Billing dispute."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "ISSUE_REFUND_RECOMMENDATION",
+      "escalation_level": "L1",
+      "target_team": "Finance & Compliance Team",
+      "requires_approval": true,
+      "expect_citations": ["refund_policy.md"]
+    }
+  },
+  {
+    "case_id": "CASE-026",
+    "category": "standard_billing_inquiry",
+    "description": "Routine request for copy of past invoice",
+    "request": {
+      "customer_id": "CUST-1081",
+      "customer_name": "Lucas Meyer",
+      "issue_summary": "Customer requesting a PDF copy of their January invoice. Routine inquiry, first contact."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "RESOLVE_STANDARD",
+      "target_team": "Billing Team",
+      "requires_approval": false,
+      "expect_citations": ["team_routing.md"]
+    }
+  },
+  {
+    "case_id": "CASE-027",
+    "category": "standard_delivery_inquiry",
+    "description": "Standard shipment tracking inquiry",
+    "request": {
+      "customer_id": "CUST-1082",
+      "customer_name": "Emma Watson",
+      "issue_summary": "Customer asking for updated tracking number for parcel dispatched this morning. Standard delivery inquiry."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "RESOLVE_STANDARD",
+      "target_team": "Logistics Team",
+      "requires_approval": false,
+      "expect_citations": ["team_routing.md"]
+    }
+  },
+  {
+    "case_id": "CASE-028",
+    "category": "standard_account_inquiry",
+    "description": "Standard username update assistance",
+    "request": {
+      "customer_id": "CUST-1083",
+      "customer_name": "Simon Peter",
+      "issue_summary": "Customer asking how to update profile display name in account settings. Standard account question."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "RESOLVE_STANDARD",
+      "target_team": "IT Support Team",
+      "requires_approval": false,
+      "expect_citations": ["team_routing.md"]
+    }
+  },
+  {
+    "case_id": "CASE-029",
+    "category": "abstention_insufficient_evidence",
+    "description": "Customer ID missing with zero ticket history",
+    "request": {
+      "customer_id": "CUST-9998",
+      "customer_name": "Unknown Customer",
+      "issue_summary": "Unregistered user asking about unknown transaction with zero customer tickets retrieved."
+    },
+    "expected": {
+      "status": "ABSTAINED",
+      "abstention_reason": "INSUFFICIENT_EVIDENCE",
+      "requires_approval": false
+    }
+  },
+  {
+    "case_id": "CASE-030",
+    "category": "team_transfer_routing",
+    "description": "IT hardware defect ticket assigned to Billing Team",
+    "request": {
+      "customer_id": "CUST-1084",
+      "customer_name": "Grace Hopper",
+      "issue_summary": "Hardware peripheral defect erroneously routed to Billing Team. Re-routing required to primary IT support team."
+    },
+    "expected": {
+      "status": "RECOMMENDATION_READY",
+      "action_type": "TRANSFER_TEAM",
+      "target_team": "IT Support Team",
+      "requires_approval": true,
+      "expect_citations": ["team_routing.md"]
+    }
   }
 ]

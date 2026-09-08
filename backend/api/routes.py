@@ -196,3 +196,43 @@ def _format_workflow_response(instance: WorkflowInstance) -> Dict[str, Any]:
         "execution_record": instance.execution_record.model_dump() if instance.execution_record else None,
         "error_message": instance.error_message,
     }
+
+
+# ----------------------------------------------------------------------
+# Evaluation & Benchmark Endpoints (Phase 4)
+# ----------------------------------------------------------------------
+
+_cached_benchmark_result: Optional[Dict[str, Any]] = None
+
+
+@router.get("/evaluation/benchmark")
+async def get_benchmark_results(
+    refresh: bool = False,
+    current_user: UserContext = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Retrieve comparative benchmark metrics evaluating FlowMind AI against the Plain-RAG Baseline.
+    """
+    global _cached_benchmark_result
+    from backend.evaluation.harness import EvaluationHarness
+
+    if _cached_benchmark_result is None or refresh:
+        harness = EvaluationHarness()
+        res = harness.run_comparative_benchmark()
+        _cached_benchmark_result = res.model_dump()
+
+    return _cached_benchmark_result
+
+
+@router.get("/evaluation/retrieval")
+async def get_retrieval_metrics(
+    current_user: UserContext = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Retrieve Information Retrieval quality metrics (Precision@K, Recall@K, MRR).
+    """
+    from backend.evaluation.harness import EvaluationHarness
+    harness = EvaluationHarness()
+    rm = harness.run_retrieval_benchmark()
+    return rm.model_dump()
+

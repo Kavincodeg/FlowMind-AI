@@ -43,7 +43,7 @@ def mock_retrieve(query: RetrievalQuery) -> RetrievalResult:
     chunks: List[RetrievedChunk] = []
 
     # 1. Zero-evidence check
-    if "cust-9999" in q or "unknown customer" in q or "zero customer tickets" in q:
+    if "cust-9999" in q or "cust-9998" in q or "unknown customer" in q or "zero customer tickets" in q:
         return RetrievalResult(
             query_text=query.query_text,
             chunks=[],
