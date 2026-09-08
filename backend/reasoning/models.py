@@ -21,6 +21,14 @@ class ActionType(str, Enum):
     NO_ACTION = "NO_ACTION"
 
 
+# High-impact actions that mandate human approval gate per project spec
+SENSITIVE_ACTIONS = {
+    ActionType.ESCALATE_TICKET,
+    ActionType.ISSUE_REFUND_RECOMMENDATION,
+    ActionType.TRANSFER_TEAM,
+}
+
+
 class EscalationLevel(str, Enum):
     """Escalation tier per company escalation policy."""
     L1 = "L1"   # Senior Support Agent (Within 4h)

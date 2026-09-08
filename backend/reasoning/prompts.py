@@ -5,7 +5,25 @@ Prompt engineering templates, indirect prompt injection defense, and structured 
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List
+
+INJECTION_PATTERNS = [
+    r"ignore\s+(all\s+)?previous\s+instructions",
+    r"override\s+(the\s+)?system",
+    r"grant\s+\$?\d+[\d,]*\s*(refund|credit)\s+immediately",
+    r"bypass\s+(the\s+)?(approval|routing)",
+    r"you\s+are\s+now\s+in\s+developer\s+mode",
+    r"do\s+not\s+follow\s+any\s+policy",
+]
+
+
+def scan_for_injection(text: str) -> bool:
+    """Independent code-level scanner for indirect prompt injection attempts in retrieved data."""
+    if not text:
+        return False
+    return any(re.search(pat, text, re.IGNORECASE) for pat in INJECTION_PATTERNS)
+
 
 ENTERPRISE_SYSTEM_PROMPT = """You are FlowMind AI, an enterprise decision-support agent specialized in Customer Complaint Escalation.
 Your purpose is to analyze customer complaints against retrieved organizational evidence (past customer tickets and enterprise policies) and formulate an evidence-grounded next-best-action recommendation.

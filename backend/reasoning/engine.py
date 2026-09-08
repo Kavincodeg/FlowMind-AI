@@ -20,10 +20,12 @@ from backend.reasoning.models import (
     EvidenceCitation,
     NextBestAction,
     ReasoningOutput,
+    SENSITIVE_ACTIONS,
 )
 from backend.reasoning.prompts import (
     ENTERPRISE_SYSTEM_PROMPT,
     build_investigation_prompt,
+    scan_for_injection,
 )
 from backend.retrieval.models import MetadataFilter, RetrievalQuery, RetrievalResult
 from backend.retrieval.retriever import retrieve as default_retrieve
@@ -91,9 +93,16 @@ class ReasoningEngine:
                 model_used=self.llm_provider.__class__.__name__,
             )
 
-        # Step 3: Sandboxed Prompt Construction
+        # Step 3: Sandboxed Prompt Construction & Code-Level Injection Scan
         ticket_context = ticket_result.combined_context
         policy_context = policy_result.combined_context
+
+        # Code-level deterministic scan of retrieved chunks and input query (Layer 1 Defense)
+        content_to_scan = f"{request.issue_summary} {ticket_context} {policy_context}"
+        code_injection_detected = scan_for_injection(content_to_scan)
+        if code_injection_detected:
+            logger.warning("Code-level scanner detected adversarial prompt injection patterns in retrieved context.")
+
         user_prompt = build_investigation_prompt(
             customer_id=request.customer_id,
             customer_name=request.customer_name,
@@ -154,7 +163,7 @@ class ReasoningEngine:
                 citations=[],
                 confidence_score=0.0,
                 requires_human_approval=False,
-                indirect_injection_detected=False,
+                indirect_injection_detected=code_injection_detected,
                 retrieval_summary=retrieval_summary,
                 reasoning_time_ms=round(elapsed_ms, 2),
                 model_used=self.llm_provider.__class__.__name__,
@@ -196,19 +205,59 @@ class ReasoningEngine:
             final_rationale = raw_rationale
             recommendation_dict = output_data.get("recommendation")
 
-        # Step 7: Enforce Approval Gating & Non-Negotiables
+        # Step 7: Confidence score handling (strictly forbid defaulting to arbitrary high confidence)
+        raw_confidence = output_data.get("confidence_score")
+        if raw_confidence is None:
+            logger.warning("Model omitted confidence_score. Forcing abstention with LOW_CONFIDENCE.")
+            status_str = "ABSTAINED"
+            abstention_reason = AbstentionReason.LOW_CONFIDENCE
+            recommendation_dict = None
+            confidence_val = 0.0
+        elif hallucinated_refs:
+            confidence_val = 0.0
+        else:
+            try:
+                confidence_val = float(raw_confidence)
+            except (ValueError, TypeError):
+                logger.warning("Invalid confidence_score %r. Forcing abstention with LOW_CONFIDENCE.", raw_confidence)
+                status_str = "ABSTAINED"
+                abstention_reason = AbstentionReason.LOW_CONFIDENCE
+                recommendation_dict = None
+                confidence_val = 0.0
+
+        # Step 8: Indirect injection defense (Layer 1 code scan + Layer 2 model report)
+        model_injection_detected = bool(output_data.get("indirect_injection_detected", False))
+        indirect_injection_detected = code_injection_detected or model_injection_detected
+
+        if code_injection_detected and "[Security Notice:" not in final_rationale:
+            final_rationale = (
+                f"{final_rationale} [Security Notice: Code-level scanner detected adversarial prompt patterns "
+                f"in retrieved context; evaluated under strict untrusted data isolation.]"
+            ).strip()
+
+        # Step 9: Enforce Approval Gating & Non-Negotiables
         recommendation_obj: Optional[NextBestAction] = None
 
         if recommendation_dict and status_str != "ABSTAINED":
-            # Enforce requires_approval = True for sensitive operations
             action_type_str = recommendation_dict.get("action_type", "ESCALATE_TICKET")
+            try:
+                action_type = ActionType(action_type_str)
+            except ValueError:
+                action_type = ActionType.ESCALATE_TICKET
+
+            # Non-negotiable constraint: sensitive actions (ESCALATE_TICKET, ISSUE_REFUND_RECOMMENDATION, TRANSFER_TEAM)
+            # or any recommendation produced when an adversarial injection is detected MUST require human approval.
+            # Routine actions (RESOLVE_STANDARD, REQUEST_CUSTOMER_INFO) in clean contexts only require approval if requested.
+            is_sensitive = (action_type in SENSITIVE_ACTIONS) or indirect_injection_detected
+            requires_approval = is_sensitive or bool(recommendation_dict.get("requires_approval", False))
+
             recommendation_obj = NextBestAction(
-                action_type=ActionType(action_type_str),
+                action_type=action_type,
                 target_team=recommendation_dict.get("target_team", "Support Team"),
                 escalation_level=recommendation_dict.get("escalation_level"),
                 urgency=recommendation_dict.get("urgency", "medium"),
                 parameters=recommendation_dict.get("parameters", {}),
-                requires_approval=True,  # Non-negotiable constraint
+                requires_approval=requires_approval,
             )
 
         # Ensure consistency: if recommendation is None and not already marked ABSTAINED, mark ABSTAINED
@@ -226,9 +275,9 @@ class ReasoningEngine:
             recommendation=recommendation_obj,
             rationale=final_rationale,
             citations=verified_citations,
-            confidence_score=float(output_data.get("confidence_score", 0.8)) if not hallucinated_refs else 0.0,
-            requires_human_approval=True if recommendation_obj else False,
-            indirect_injection_detected=bool(output_data.get("indirect_injection_detected", False)),
+            confidence_score=confidence_val,
+            requires_human_approval=recommendation_obj.requires_approval if recommendation_obj else False,
+            indirect_injection_detected=indirect_injection_detected,
             retrieval_summary=retrieval_summary,
             reasoning_time_ms=round(elapsed_ms, 2),
             model_used=self.llm_provider.__class__.__name__,

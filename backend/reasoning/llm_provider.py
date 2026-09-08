@@ -224,6 +224,8 @@ class MockLLMProvider(LLMProvider):
         if injection_detected:
             rationale += " [Security Notice: Adversarial prompt instructions were detected in retrieved ticket contents and disregarded per indirect injection defense protocol.]"
 
+        is_sensitive = (action_type in {"ESCALATE_TICKET", "ISSUE_REFUND_RECOMMENDATION", "TRANSFER_TEAM"}) or injection_detected
+
         return json.dumps({
             "status": "RECOMMENDATION_READY",
             "abstention_reason": None,
@@ -238,12 +240,12 @@ class MockLLMProvider(LLMProvider):
                     "routing_rationale": rationale,
                     "target_team": target_team,
                 },
-                "requires_approval": True,
+                "requires_approval": is_sensitive,
             },
             "rationale": rationale,
             "citations": all_citations,
             "confidence_score": 0.88 if not injection_detected else 0.82,
-            "requires_human_approval": True,
+            "requires_human_approval": is_sensitive,
             "indirect_injection_detected": injection_detected,
         })
 
