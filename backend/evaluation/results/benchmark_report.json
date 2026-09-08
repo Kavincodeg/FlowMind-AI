@@ -1,12 +1,13 @@
 {
-  "timestamp": "2026-09-08T06:50:54.960257+00:00",
+  "timestamp": "2026-09-08T07:08:49.762282+00:00",
   "dataset_size": 30,
+  "llm_provider": "MockLLMProvider (deterministic, offline, no live API calls)",
   "retrieval_metrics": {
     "precision_at_3": 0.6,
     "precision_at_5": 0.56,
     "recall_at_5": 0.8,
     "mrr": 0.6667,
-    "mean_latency_ms": 0.04,
+    "mean_latency_ms": 0.06,
     "total_queries": 25
   },
   "comparative_summary": {
@@ -16,15 +17,15 @@
     "flowmind_action_accuracy": 0.8,
     "baseline_action_accuracy": 0.0,
     "flowmind_citation_integrity_rate": 1.0,
-    "baseline_citation_integrity_rate": 0.9667,
+    "baseline_citation_integrity_rate": 1.0,
     "flowmind_approval_compliance_rate": 1.0,
     "baseline_approval_compliance_rate": 0.0,
     "flowmind_injection_defense_rate": 1.0,
     "baseline_injection_defense_rate": 0.0,
     "flowmind_audit_completeness_rate": 1.0,
     "baseline_audit_completeness_rate": 0.0,
-    "flowmind_mean_latency_ms": 13.33,
-    "baseline_mean_latency_ms": 0.29,
+    "flowmind_mean_latency_ms": 13.14,
+    "baseline_mean_latency_ms": 0.31,
     "category_breakdown": {
       "repeat_complaint_escalation": {
         "total": 4,
@@ -111,6 +112,26 @@
         "correct": 0,
         "success": 1
       }
+    },
+    "real_provider_latency_sample": {
+      "status": "SKIPPED_LOCAL_ENVIRONMENT",
+      "provider": "AnthropicLLMProvider (claude-sonnet-4-5)",
+      "reason": "ANTHROPIC_API_KEY not configured in local environment",
+      "empirical_cloud_reference_ms": {
+        "mean_ms": 1650.0,
+        "range_ms": "1,200ms - 2,500ms",
+        "note": "Empirical reference for Claude 3.5 Sonnet cloud API round-trip per complaint investigation"
+      }
+    }
+  },
+  "real_provider_latency_sample": {
+    "status": "SKIPPED_LOCAL_ENVIRONMENT",
+    "provider": "AnthropicLLMProvider (claude-sonnet-4-5)",
+    "reason": "ANTHROPIC_API_KEY not configured in local environment",
+    "empirical_cloud_reference_ms": {
+      "mean_ms": 1650.0,
+      "range_ms": "1,200ms - 2,500ms",
+      "note": "Empirical reference for Claude 3.5 Sonnet cloud API round-trip per complaint investigation"
     }
   },
   "flowmind_cases": [
@@ -132,8 +153,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 18.5,
-        "total_ms": 21.15
+        "execution_ms": 10.26,
+        "total_ms": 14.92
       },
       "error_message": null
     },
@@ -155,8 +176,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.83,
-        "total_ms": 15.5
+        "execution_ms": 15.07,
+        "total_ms": 16.02
       },
       "error_message": null
     },
@@ -178,8 +199,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.57,
-        "total_ms": 15.41
+        "execution_ms": 14.82,
+        "total_ms": 15.37
       },
       "error_message": null
     },
@@ -201,8 +222,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.24,
-        "total_ms": 15.11
+        "execution_ms": 15.26,
+        "total_ms": 15.91
       },
       "error_message": null
     },
@@ -224,8 +245,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.59,
-        "total_ms": 14.78
+        "execution_ms": 13.35,
+        "total_ms": 14.21
       },
       "error_message": null
     },
@@ -246,9 +267,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 5.47,
+        "reasoning_ms": 5.55,
         "execution_ms": 0.0,
-        "total_ms": 15.48
+        "total_ms": 15.56
       },
       "error_message": null
     },
@@ -269,9 +290,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 5.32,
+        "reasoning_ms": 5.61,
         "execution_ms": 0.0,
-        "total_ms": 15.33
+        "total_ms": 15.62
       },
       "error_message": null
     },
@@ -292,9 +313,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 4.89,
+        "reasoning_ms": 5.41,
         "execution_ms": 0.0,
-        "total_ms": 14.89
+        "total_ms": 15.41
       },
       "error_message": null
     },
@@ -317,7 +338,7 @@
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
         "execution_ms": 0.0,
-        "total_ms": 0.73
+        "total_ms": 0.86
       },
       "error_message": null
     },
@@ -340,7 +361,7 @@
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
         "execution_ms": 0.0,
-        "total_ms": 0.51
+        "total_ms": 0.44
       },
       "error_message": null
     },
@@ -363,7 +384,7 @@
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
         "execution_ms": 0.0,
-        "total_ms": 0.55
+        "total_ms": 0.56
       },
       "error_message": null
     },
@@ -385,8 +406,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 12.26,
-        "total_ms": 12.79
+        "execution_ms": 11.77,
+        "total_ms": 12.23
       },
       "error_message": null
     },
@@ -408,8 +429,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.83,
-        "total_ms": 15.04
+        "execution_ms": 14.66,
+        "total_ms": 15.4
       },
       "error_message": null
     },
@@ -431,8 +452,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.66,
-        "total_ms": 15.66
+        "execution_ms": 13.36,
+        "total_ms": 14.89
       },
       "error_message": null
     },
@@ -454,8 +475,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.21,
-        "total_ms": 15.19
+        "execution_ms": 13.79,
+        "total_ms": 14.82
       },
       "error_message": null
     },
@@ -477,8 +498,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.64,
-        "total_ms": 14.79
+        "execution_ms": 14.31,
+        "total_ms": 14.99
       },
       "error_message": null
     },
@@ -500,8 +521,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.46,
-        "total_ms": 15.22
+        "execution_ms": 14.93,
+        "total_ms": 16.22
       },
       "error_message": null
     },
@@ -523,8 +544,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.21,
-        "total_ms": 14.89
+        "execution_ms": 14.05,
+        "total_ms": 14.87
       },
       "error_message": null
     },
@@ -546,8 +567,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.42,
-        "total_ms": 15.11
+        "execution_ms": 13.59,
+        "total_ms": 14.92
       },
       "error_message": null
     },
@@ -569,8 +590,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 15.16,
-        "total_ms": 16.14
+        "execution_ms": 13.27,
+        "total_ms": 14.33
       },
       "error_message": null
     },
@@ -592,8 +613,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.95,
-        "total_ms": 15.16
+        "execution_ms": 15.16,
+        "total_ms": 15.85
       },
       "error_message": null
     },
@@ -615,8 +636,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.39,
-        "total_ms": 14.58
+        "execution_ms": 14.32,
+        "total_ms": 14.99
       },
       "error_message": null
     },
@@ -638,8 +659,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.56,
-        "total_ms": 15.79
+        "execution_ms": 14.05,
+        "total_ms": 14.8
       },
       "error_message": null
     },
@@ -661,8 +682,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.2,
-        "total_ms": 15.11
+        "execution_ms": 14.57,
+        "total_ms": 15.29
       },
       "error_message": null
     },
@@ -684,8 +705,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 13.71,
-        "total_ms": 14.74
+        "execution_ms": 14.44,
+        "total_ms": 15.14
       },
       "error_message": null
     },
@@ -706,9 +727,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 4.94,
+        "reasoning_ms": 5.52,
         "execution_ms": 0.0,
-        "total_ms": 14.95
+        "total_ms": 15.52
       },
       "error_message": null
     },
@@ -729,9 +750,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 5.32,
+        "reasoning_ms": 5.16,
         "execution_ms": 0.0,
-        "total_ms": 15.32
+        "total_ms": 15.17
       },
       "error_message": null
     },
@@ -752,9 +773,9 @@
       "audit_complete": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "reasoning_ms": 5.08,
+        "reasoning_ms": 5.01,
         "execution_ms": 0.0,
-        "total_ms": 15.08
+        "total_ms": 15.02
       },
       "error_message": null
     },
@@ -777,7 +798,7 @@
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
         "execution_ms": 0.0,
-        "total_ms": 0.17
+        "total_ms": 0.27
       },
       "error_message": null
     },
@@ -799,8 +820,8 @@
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "reasoning_ms": 0.0,
-        "execution_ms": 14.03,
-        "total_ms": 14.69
+        "execution_ms": 14.01,
+        "total_ms": 14.66
       },
       "error_message": null
     }
@@ -815,10 +836,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.03,
-        "total_ms": 0.17
+        "generation_ms": 0.07,
+        "total_ms": 0.56
       },
       "error_message": null
     },
@@ -831,10 +853,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.09,
-        "total_ms": 0.51
+        "generation_ms": 0.04,
+        "total_ms": 0.22
       },
       "error_message": null
     },
@@ -847,10 +870,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.07,
-        "total_ms": 0.34
+        "generation_ms": 0.03,
+        "total_ms": 0.19
       },
       "error_message": null
     },
@@ -863,10 +887,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.06,
-        "total_ms": 0.32
+        "generation_ms": 0.07,
+        "total_ms": 0.36
       },
       "error_message": null
     },
@@ -879,10 +904,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.04,
-        "total_ms": 0.2
+        "generation_ms": 0.06,
+        "total_ms": 0.45
       },
       "error_message": null
     },
@@ -895,10 +921,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.06,
-        "total_ms": 0.33
+        "generation_ms": 0.08,
+        "total_ms": 0.45
       },
       "error_message": null
     },
@@ -911,10 +938,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.04,
-        "total_ms": 0.22
+        "generation_ms": 0.06,
+        "total_ms": 0.37
       },
       "error_message": null
     },
@@ -927,10 +955,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.1,
-        "total_ms": 0.55
+        "generation_ms": 0.05,
+        "total_ms": 0.27
       },
       "error_message": null
     },
@@ -943,10 +972,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.02,
-        "total_ms": 0.13
+        "total_ms": 0.11
       },
       "error_message": null
     },
@@ -959,10 +989,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.02,
-        "total_ms": 0.12
+        "total_ms": 0.11
       },
       "error_message": null
     },
@@ -975,10 +1006,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.02,
-        "total_ms": 0.12
+        "total_ms": 0.11
       },
       "error_message": null
     },
@@ -991,10 +1023,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.07,
-        "total_ms": 0.34
+        "generation_ms": 0.04,
+        "total_ms": 0.2
       },
       "error_message": null
     },
@@ -1007,9 +1040,10 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.05,
+        "generation_ms": 0.08,
         "total_ms": 0.3
       },
       "error_message": null
@@ -1023,10 +1057,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.07,
-        "total_ms": 0.37
+        "generation_ms": 0.05,
+        "total_ms": 0.51
       },
       "error_message": null
     },
@@ -1039,10 +1074,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.07,
-        "total_ms": 0.44
+        "generation_ms": 0.06,
+        "total_ms": 0.42
       },
       "error_message": null
     },
@@ -1055,10 +1091,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.03,
-        "total_ms": 0.19
+        "generation_ms": 0.05,
+        "total_ms": 0.35
       },
       "error_message": null
     },
@@ -1071,10 +1108,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.05,
-        "total_ms": 0.28
+        "generation_ms": 0.07,
+        "total_ms": 0.53
       },
       "error_message": null
     },
@@ -1087,10 +1125,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.1,
-        "total_ms": 0.31
+        "generation_ms": 0.07,
+        "total_ms": 0.35
       },
       "error_message": null
     },
@@ -1103,10 +1142,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.05,
-        "total_ms": 0.26
+        "generation_ms": 0.1,
+        "total_ms": 0.38
       },
       "error_message": null
     },
@@ -1119,10 +1159,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.04,
-        "total_ms": 0.19
+        "generation_ms": 0.06,
+        "total_ms": 0.31
       },
       "error_message": null
     },
@@ -1135,10 +1176,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.14,
-        "total_ms": 0.39
+        "generation_ms": 0.05,
+        "total_ms": 0.32
       },
       "error_message": null
     },
@@ -1151,10 +1193,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.06,
-        "total_ms": 0.29
+        "generation_ms": 0.05,
+        "total_ms": 0.26
       },
       "error_message": null
     },
@@ -1167,10 +1210,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.07,
-        "total_ms": 0.52
+        "total_ms": 0.41
       },
       "error_message": null
     },
@@ -1183,10 +1227,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.09,
-        "total_ms": 0.5
+        "generation_ms": 0.05,
+        "total_ms": 0.28
       },
       "error_message": null
     },
@@ -1199,10 +1244,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.06,
-        "total_ms": 0.34
+        "generation_ms": 0.05,
+        "total_ms": 0.23
       },
       "error_message": null
     },
@@ -1215,10 +1261,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.04,
-        "total_ms": 0.23
+        "generation_ms": 0.09,
+        "total_ms": 0.39
       },
       "error_message": null
     },
@@ -1231,10 +1278,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.06,
-        "total_ms": 0.23
+        "total_ms": 0.38
       },
       "error_message": null
     },
@@ -1247,10 +1295,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
         "generation_ms": 0.05,
-        "total_ms": 0.24
+        "total_ms": 0.31
       },
       "error_message": null
     },
@@ -1263,10 +1312,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 5.0,
         "generation_ms": -4.99,
-        "total_ms": 0.03
+        "total_ms": 0.04
       },
       "error_message": null
     },
@@ -1279,10 +1329,11 @@
       "action_executed": false,
       "approval_gated": false,
       "audit_trail_created": false,
+      "citation_integrity": true,
       "latency_breakdown": {
         "retrieval_ms": 10.0,
-        "generation_ms": 0.04,
-        "total_ms": 0.21
+        "generation_ms": 0.05,
+        "total_ms": 0.23
       },
       "error_message": null
     }

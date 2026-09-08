@@ -70,6 +70,7 @@ class BaselineCaseResult(BaseModel):
     action_executed: bool = Field(default=False, description="Always False: baseline has no execution connector")
     approval_gated: bool = Field(default=False, description="Always False: baseline has no approval mechanism")
     audit_trail_created: bool = Field(default=False, description="Always False: baseline has no audit logging")
+    citation_integrity: bool = Field(default=True, description="Option A: True if baseline citations/sources strictly reference actually-retrieved chunks")
 
     latency_breakdown: Dict[str, float] = Field(
         default_factory=dict,
@@ -108,6 +109,7 @@ class ComparativeMetricsSummary(BaseModel):
     baseline_mean_latency_ms: float
 
     category_breakdown: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    real_provider_latency_sample: Optional[Dict[str, Any]] = None
 
 
 class BenchmarkResult(BaseModel):
@@ -118,7 +120,12 @@ class BenchmarkResult(BaseModel):
 
     timestamp: str
     dataset_size: int
+    llm_provider: str = Field(
+        default="MockLLMProvider (deterministic, offline, no live API calls)",
+        description="LLM provider used for the primary comparative benchmark run",
+    )
     retrieval_metrics: RetrievalMetrics
     comparative_summary: ComparativeMetricsSummary
+    real_provider_latency_sample: Optional[Dict[str, Any]] = None
     flowmind_cases: List[FlowMindCaseResult]
     baseline_cases: List[BaselineCaseResult]
