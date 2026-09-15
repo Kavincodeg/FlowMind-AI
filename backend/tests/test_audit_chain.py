@@ -619,3 +619,169 @@ class TestRealAuditRecordRoundTrip:
             assert fetched.chain_events[i]["parent_hash"] == fetched.chain_events[i - 1]["block_hash"], (
                 f"Chain linkage broken at index {i} in the fetched record"
             )
+
+    def test_json_round_trip_preserves_chain_validity(self):
+        """
+        Serialises a real AuditRecord to a JSON string (record.model_dump_json()) and
+        back (json.loads()) before verifying, simulating what a persistent database or
+        HTTP round-trip would actually do.
+
+        AuditService.get_audit() currently returns the exact same in-memory Python object
+        reference that was written -- so test_real_audit_record_round_trip_verifies_valid
+        never actually crosses a serialisation boundary.  This test does: it converts the
+        AuditRecord through a full JSON encode/decode cycle before calling
+        verify_event_chain(), catching any regression where chain_events fields change
+        their Python type after a serialise/deserialise pass (e.g. a dict key becomes a
+        str where the hasher expected an int, or an enum value arrives as an uppercase
+        string instead of the canonical .value form).
+
+        This is the test that would catch a future regression if audit storage moves off
+        in-memory (file, SQLite, Postgres, Redis) without re-validating the serialisation
+        path.  See the storage note in audit/chain.py.
+        """
+        import json as _json
+        from datetime import datetime, timezone
+        import uuid as _uuid
+
+        from backend.reasoning.models import (
+            ActionType,
+            EscalationLevel,
+            EvidenceCitation,
+            NextBestAction,
+            ReasoningOutput,
+        )
+        from backend.connectors.base import ExecutionResult
+
+        workflow_id = "WF-JSONRT-001"
+        short_id = workflow_id[:8]
+        started_at = datetime(2026, 9, 15, 5, 0, 0, tzinfo=timezone.utc).isoformat()
+        completed_at = datetime(2026, 9, 15, 5, 0, 3, tzinfo=timezone.utc).isoformat()
+
+        recommendation = NextBestAction(
+            action_type=ActionType.ISSUE_REFUND_RECOMMENDATION,
+            target_team="Billing",
+            escalation_level=EscalationLevel.L3,
+            urgency="critical",
+            parameters={"refund_amount_usd": 49.99, "ticket_ref": "TKT-0099"},
+            requires_approval=True,
+        )
+        citations = [
+            EvidenceCitation(
+                source_type="ticket",
+                source_id="TKT-0099",
+                chunk_index=2,
+                snippet="Overcharged by $49.99 for cancelled subscription.",
+                relevance_reason="Direct evidence of refund eligibility.",
+            ),
+        ]
+        reasoning_output = ReasoningOutput(
+            status="RECOMMENDATION_READY",
+            abstention_reason=None,
+            customer_summary="Customer overcharged for cancelled subscription.",
+            identified_root_cause="Billing system did not process cancellation before invoice.",
+            recommendation=recommendation,
+            rationale="Evidence confirms overcharge; refund policy applies.",
+            citations=citations,
+            confidence_score=0.97,
+            requires_human_approval=True,
+            indirect_injection_detected=False,
+            retrieval_summary={"total_retrieved": 4, "top_score": 0.97},
+            reasoning_time_ms=278.1,
+        )
+        execution_result = ExecutionResult(
+            workflow_id=workflow_id,
+            transaction_id="TX-JSONRT-001",
+            connector_name="MockEnterpriseConnector",
+            action_type=ActionType.ISSUE_REFUND_RECOMMENDATION,
+            status="SUCCESS",
+            details={"refund_approved": True, "amount_usd": 49.99},
+            executed_at=completed_at,
+            latency_ms=31.7,
+        )
+
+        request_payload = {
+            "customer_id": "CUST-JRT-001",
+            "customer_name": "JSON Round Trip Tester",
+            "issue_summary": "Overcharged for cancelled subscription.",
+            "requester_id": "USR-001",
+            "requester_role": "support_agent",
+        }
+        retrieval_summary = reasoning_output.retrieval_summary
+        evidence_citations = [c.model_dump(mode="json") for c in reasoning_output.citations]
+        reasoning_output_dict = {
+            "status": reasoning_output.status,
+            "abstention_reason": reasoning_output.abstention_reason.value if reasoning_output.abstention_reason else None,
+            "root_cause": reasoning_output.identified_root_cause,
+            "rationale": reasoning_output.rationale,
+            "confidence_score": reasoning_output.confidence_score,
+            "indirect_injection_detected": reasoning_output.indirect_injection_detected,
+            "recommendation": reasoning_output.recommendation.model_dump(mode="json") if reasoning_output.recommendation else None,
+        }
+        approval_record = {
+            "decision": "APPROVE",
+            "approver_id": "USR-003",
+            "approver_role": "manager",
+            "comments": "Refund confirmed.",
+            "timestamp": datetime(2026, 9, 15, 5, 0, 2, tzinfo=timezone.utc).isoformat(),
+        }
+        execution_record = execution_result.model_dump(mode="json")
+
+        raw_events = [
+            {"event_id": f"EVT-001-{short_id}", "stage": "REQUEST_RECEIVED",
+             "timestamp": started_at, "actor": "USR-001", "details": request_payload},
+            {"event_id": f"EVT-002-{short_id}", "stage": "EVIDENCE_RETRIEVED",
+             "timestamp": started_at, "actor": "VectorRetriever (pgvector)",
+             "details": {"retrieval_summary": retrieval_summary, "evidence_citations": evidence_citations}},
+            {"event_id": f"EVT-003-{short_id}", "stage": "REASONING_COMPLETED",
+             "timestamp": started_at, "actor": "ReasoningEngine", "details": reasoning_output_dict},
+            {"event_id": f"EVT-004-{short_id}", "stage": "APPROVAL_SUBMITTED",
+             "timestamp": approval_record["timestamp"], "actor": "USR-003", "details": approval_record},
+            {"event_id": f"EVT-005-{short_id}", "stage": "ACTION_DISPATCHED",
+             "timestamp": execution_record.get("executed_at", completed_at),
+             "actor": execution_record.get("connector_name", "MockEnterpriseConnector"),
+             "details": execution_record},
+        ]
+
+        chain_events = build_event_chain(raw_events)
+
+        record = AuditRecord(
+            audit_id=str(_uuid.uuid4()),
+            workflow_id=workflow_id,
+            terminal_state="COMPLETED",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=3000.0,
+            request_payload=request_payload,
+            retrieval_summary=retrieval_summary,
+            evidence_citations=evidence_citations,
+            reasoning_output=reasoning_output_dict,
+            approval_record=approval_record,
+            execution_record=execution_record,
+            chain_events=chain_events,
+        )
+
+        # --- Cross the serialisation boundary ---
+        # model_dump_json() encodes the full AuditRecord to a JSON string, then
+        # json.loads() decodes it back to plain Python dicts/lists/primitives.
+        # The resulting reconstructed["chain_events"] contains only str/int/float/bool/None
+        # -- the same types the verifier would see from any real persistent store.
+        json_str = record.model_dump_json()
+        reconstructed = _json.loads(json_str)
+
+        result = verify_event_chain(reconstructed["chain_events"])
+
+        assert result["valid"] is True, (
+            f"Chain verification failed at index {result['failed_at_index']} "
+            f"(event_id={result['failed_event_id']}) after JSON round-trip. "
+            "This indicates a type or encoding difference between write-time "
+            "chain_events and their JSON-deserialised equivalents -- a regression "
+            "that would silently break chain verification on any persistent storage backend."
+        )
+        assert result["failed_at_index"] is None
+        assert result["failed_event_id"] is None
+
+        # Confirm the JSON round-trip preserved the chain structure intact
+        assert len(reconstructed["chain_events"]) == 5
+        assert reconstructed["chain_events"][0]["parent_hash"] == GENESIS_HASH
+        for i in range(1, 5):
+            assert reconstructed["chain_events"][i]["parent_hash"] == reconstructed["chain_events"][i - 1]["block_hash"]
