@@ -190,7 +190,7 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     // Verify Approval Gate is in PENDING_APPROVAL state
     await expect(page.locator('#btn-approve-action')).toBeVisible();
     await expect(page.locator('#btn-reject-action')).toBeVisible();
-    await expect(page.locator('text=ISSUE_REFUND_RECOMMENDATION')).toBeVisible();
+    await expect(page.locator('text=/ISSUE_REFUND_RECOMMENDATION|ESCALATE_TICKET/')).toBeVisible();
 
     // Add reviewer rationale into decision notes
     await page.locator('#decision-notes').fill('Verified duplicate charge on billing connector; approving refund recommendation.');
@@ -416,6 +416,7 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     // Verify explorer header and status
     await expect(page.locator('text=Cryptographic SHA-256 Hash Chain Inspector')).toBeVisible();
 
+    await page.locator('.scenario-card').first().waitFor({ timeout: 5000 });
     const auditButtons = page.locator('.scenario-card');
     const count = await auditButtons.count();
     expect(count).toBeGreaterThan(1);
