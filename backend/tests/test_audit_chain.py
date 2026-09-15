@@ -369,3 +369,253 @@ class TestDuplicateAuditRecordGuard:
         assert service.get_audit("WF-COEXIST-001").workflow_id == "WF-COEXIST-001"
         assert service.get_audit("WF-COEXIST-002").workflow_id == "WF-COEXIST-002"
         assert len(service.list_audits()) == 2
+
+# ---------------------------------------------------------------------------
+# Test F: Real audit record round-trip (write path -> AuditService -> fetch -> verify)
+# ---------------------------------------------------------------------------
+
+class TestRealAuditRecordRoundTrip:
+
+    def test_real_audit_record_round_trip_verifies_valid(self):
+        """
+        Builds a real AuditRecord end-to-end with genuine non-string Python objects
+        (datetime instances, enum values from ActionType, EscalationLevel, AbstentionReason)
+        in its fields -- not pre-stringified test literals -- stores it via AuditService,
+        independently fetches it back via get_audit(), and confirms verify_event_chain()
+        reports valid=True on the fetched copy.
+
+        This proves write-time and verify-time serialization genuinely agree on
+        realistic data, not just that a pure function returns the same output when
+        called twice with identical literal input.
+
+        The specific failure mode this guards against: if AuditService.get_audit()
+        ever returned re-hydrated data that serialises even slightly differently than
+        what was originally hashed at write time (e.g., because an enum .value was
+        not normalised, or a datetime came back with a different timezone suffix),
+        verify_event_chain() would report valid=False on an untampered record.
+        Nothing in the existing suite would catch that failure.
+
+        Construction mirrors _finalize_audit() in orchestrator.py exactly:
+          - Real NextBestAction with ActionType enum (not a string)
+          - Real EscalationLevel enum value
+          - Real EvidenceCitation instances (with source_type / source_id)
+          - All serialised via .model_dump(mode='json') before build_event_chain()
+          - approval_record includes a real datetime timestamp (isoformat string,
+            as the orchestrator stores it -- proving the isoformat path is stable)
+        """
+        from datetime import datetime, timezone
+        import uuid as _uuid
+
+        from backend.reasoning.models import (
+            AbstentionReason,
+            ActionType,
+            EscalationLevel,
+            EvidenceCitation,
+            NextBestAction,
+            ReasoningOutput,
+        )
+        from backend.connectors.base import ExecutionResult
+
+        workflow_id = "WF-ROUNDTRIP-REAL-001"
+        short_id = workflow_id[:8]
+
+        # -------------------------------------------------------------------
+        # Construct genuine Pydantic model instances -- the same types that
+        # _finalize_audit() receives from the orchestrator at runtime.
+        # -------------------------------------------------------------------
+
+        # Real NextBestAction: ActionType is a str(Enum), EscalationLevel is a str(Enum).
+        # When model_dump(mode='json') is called, ActionType.ESCALATE_TICKET becomes
+        # the string "ESCALATE_TICKET" and EscalationLevel.L2 becomes "L2".
+        # canonical_json() must produce the same result on both the write call and
+        # the verify call -- this test proves it does.
+        recommendation = NextBestAction(
+            action_type=ActionType.ESCALATE_TICKET,
+            target_team="Finance",
+            escalation_level=EscalationLevel.L2,
+            urgency="high",
+            parameters={"reason": "Duplicate billing charge confirmed.", "ticket_ref": "TKT-0042"},
+            requires_approval=True,
+        )
+
+        # Real EvidenceCitation instances -- model_dump(mode='json') applied in the loop.
+        citations = [
+            EvidenceCitation(
+                source_type="ticket",
+                source_id="TKT-0042",
+                chunk_index=0,
+                snippet="Customer was charged twice in the same billing cycle.",
+                relevance_reason="Directly evidences the duplicate charge complaint.",
+            ),
+            EvidenceCitation(
+                source_type="policy",
+                source_id="billing_policy.md",
+                chunk_index=1,
+                snippet="Duplicate charges must be escalated to Finance within 24h.",
+                relevance_reason="Mandates escalation path for this case type.",
+            ),
+        ]
+
+        # Real ReasoningOutput -- carries the enum fields, citation list, etc.
+        reasoning_output = ReasoningOutput(
+            status="RECOMMENDATION_READY",
+            abstention_reason=None,
+            customer_summary="Customer reports being billed twice in the same cycle.",
+            identified_root_cause="Duplicate billing cycle entry.",
+            recommendation=recommendation,
+            rationale="Two citations confirm duplicate billing; policy mandates Finance escalation.",
+            citations=citations,
+            confidence_score=0.94,
+            requires_human_approval=True,
+            indirect_injection_detected=False,
+            retrieval_summary={"total_retrieved": 6, "top_score": 0.94, "sources_used": ["ticket", "policy"]},
+            reasoning_time_ms=312.5,
+        )
+
+        # Real ExecutionResult -- action_type is an ActionType enum.
+        # model_dump(mode='json') converts it to the string value "ESCALATE_TICKET".
+        execution_result = ExecutionResult(
+            workflow_id=workflow_id,
+            transaction_id="TX-ROUNDTRIP-001",
+            connector_name="MockEnterpriseConnector",
+            action_type=ActionType.ESCALATE_TICKET,
+            status="SUCCESS",
+            details={"dispatched_to": "Finance", "ticket_ref": "TKT-0042", "sla_hours": 2},
+            executed_at=datetime.now(timezone.utc).isoformat(),
+            latency_ms=45.2,
+        )
+
+        # -------------------------------------------------------------------
+        # Mirror _finalize_audit() serialisation: .model_dump(mode='json')
+        # on every Pydantic object before building the chain.
+        # -------------------------------------------------------------------
+        started_at = datetime(2026, 9, 15, 5, 0, 0, tzinfo=timezone.utc).isoformat()
+        completed_at = datetime(2026, 9, 15, 5, 0, 2, tzinfo=timezone.utc).isoformat()
+
+        request_payload = {
+            "customer_id": "CUST-RT-001",
+            "customer_name": "Real Object Tester",
+            "issue_summary": "Duplicate billing charge on account.",
+            "requester_id": "USR-001",
+            "requester_role": "support_agent",
+        }
+        retrieval_summary = reasoning_output.retrieval_summary
+        # .model_dump(mode='json') converts ActionType enum -> "ESCALATE_TICKET" string,
+        # EscalationLevel -> "L2" string, etc. -- exactly as the orchestrator does.
+        evidence_citations = [c.model_dump(mode="json") for c in reasoning_output.citations]
+        reasoning_output_dict = {
+            "status": reasoning_output.status,
+            "abstention_reason": reasoning_output.abstention_reason.value if reasoning_output.abstention_reason else None,
+            "root_cause": reasoning_output.identified_root_cause,
+            "rationale": reasoning_output.rationale,
+            "confidence_score": reasoning_output.confidence_score,
+            "indirect_injection_detected": reasoning_output.indirect_injection_detected,
+            "recommendation": reasoning_output.recommendation.model_dump(mode="json") if reasoning_output.recommendation else None,
+        }
+        approval_record = {
+            "decision": "APPROVE",
+            "approver_id": "USR-003",
+            "approver_role": "manager",
+            "comments": "Evidence is clear.",
+            # Real datetime converted to isoformat string, matching the orchestrator
+            "timestamp": datetime(2026, 9, 15, 5, 0, 1, tzinfo=timezone.utc).isoformat(),
+        }
+        # .model_dump(mode='json') converts ActionType enum -> string in execution_record
+        execution_record = execution_result.model_dump(mode="json")
+
+        # -------------------------------------------------------------------
+        # Build the chain -- same event structure as _finalize_audit()
+        # -------------------------------------------------------------------
+        raw_events = [
+            {
+                "event_id": f"EVT-001-{short_id}",
+                "stage": "REQUEST_RECEIVED",
+                "timestamp": started_at,
+                "actor": "USR-001",
+                "details": request_payload,
+            },
+            {
+                "event_id": f"EVT-002-{short_id}",
+                "stage": "EVIDENCE_RETRIEVED",
+                "timestamp": started_at,
+                "actor": "VectorRetriever (pgvector)",
+                "details": {
+                    "retrieval_summary": retrieval_summary,
+                    "evidence_citations": evidence_citations,
+                },
+            },
+            {
+                "event_id": f"EVT-003-{short_id}",
+                "stage": "REASONING_COMPLETED",
+                "timestamp": started_at,
+                "actor": "ReasoningEngine",
+                "details": reasoning_output_dict,
+            },
+            {
+                "event_id": f"EVT-004-{short_id}",
+                "stage": "APPROVAL_SUBMITTED",
+                "timestamp": approval_record["timestamp"],
+                "actor": "USR-003",
+                "details": approval_record,
+            },
+            {
+                "event_id": f"EVT-005-{short_id}",
+                "stage": "ACTION_DISPATCHED",
+                "timestamp": execution_record.get("executed_at", completed_at),
+                "actor": execution_record.get("connector_name", "MockEnterpriseConnector"),
+                "details": execution_record,
+            },
+        ]
+
+        chain_events = build_event_chain(raw_events)
+
+        # -------------------------------------------------------------------
+        # Store via AuditService and fetch back independently
+        # -------------------------------------------------------------------
+        record = AuditRecord(
+            audit_id=str(_uuid.uuid4()),
+            workflow_id=workflow_id,
+            terminal_state="COMPLETED",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=2000.0,
+            request_payload=request_payload,
+            retrieval_summary=retrieval_summary,
+            evidence_citations=evidence_citations,
+            reasoning_output=reasoning_output_dict,
+            approval_record=approval_record,
+            execution_record=execution_record,
+            chain_events=chain_events,
+        )
+
+        service = AuditService()
+        service.record_audit(record)
+
+        # Fetch back through the service -- this is the fetch path, independent of write
+        fetched = service.get_audit(workflow_id)
+        assert fetched is not None, "AuditService.get_audit() must return the stored record"
+
+        # -------------------------------------------------------------------
+        # Verify: re-derive every hash from the fetched copy's stored content.
+        # If write-time and verify-time serialisation disagree on any enum value,
+        # datetime format, or key ordering, this will report valid=False.
+        # -------------------------------------------------------------------
+        result = verify_event_chain(fetched.chain_events)
+
+        assert result["valid"] is True, (
+            f"Round-trip verification failed at index {result['failed_at_index']} "
+            f"(event_id={result['failed_event_id']}). "
+            "This indicates write-time and verify-time serialisation produced different "
+            "hashes for the same data -- likely an enum .value normalisation or "
+            "datetime format inconsistency."
+        )
+        assert result["failed_at_index"] is None
+        assert result["failed_event_id"] is None
+
+        # Structural sanity: confirm all 5 lifecycle blocks are present and hashed
+        assert len(fetched.chain_events) == 5
+        assert fetched.chain_events[0]["parent_hash"] == GENESIS_HASH
+        for i in range(1, 5):
+            assert fetched.chain_events[i]["parent_hash"] == fetched.chain_events[i - 1]["block_hash"], (
+                f"Chain linkage broken at index {i} in the fetched record"
+            )
