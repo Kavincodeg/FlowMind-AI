@@ -120,7 +120,8 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await expect(page.locator('text=Workflow Audit Logs')).toBeVisible();
     await expect(page.locator('text=Cryptographic SHA-256 Hash Chain Inspector')).toBeVisible();
 
-    // Confirm that the audit run selector contains items
+    // Wait for audit logs to load from API
+    await page.locator('.scenario-card').first().waitFor({ timeout: 10000 });
     const auditButtons = page.locator('.scenario-card');
     const count = await auditButtons.count();
     expect(count).toBeGreaterThan(0);
@@ -441,5 +442,60 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
 
     // Save screenshot of deep audit block inspection
     await page.screenshot({ path: 'screenshots/14_audit_deep_inspection.png', fullPage: true });
+  });
+
+  test('15. Knowledge Base & Vector Retrieval Explorer View', async ({ page }) => {
+    // Navigate to Knowledge Base tab
+    await page.locator('nav button', { hasText: 'Knowledge Base & Retrieval' }).click();
+
+    // Verify main header
+    await expect(page.locator('text=Knowledge Base & Retrieval Backbone (Phase 1)')).toBeVisible();
+
+    // Verify sub-tabs
+    await expect(page.locator('button', { hasText: 'Enterprise Policies' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Historical Ticket Corpus' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Interactive Retrieval Sandbox' })).toBeVisible();
+
+    // Verify policies loaded
+    await expect(page.locator('text=Escalation Policy')).toBeVisible();
+
+    // Switch to Tickets sub-tab
+    await page.locator('button', { hasText: 'Historical Ticket Corpus' }).click();
+    await expect(page.locator('text=Historical Support Tickets')).toBeVisible();
+
+    // Switch to Semantic Retrieval Sandbox
+    await page.locator('button', { hasText: 'Interactive Retrieval Sandbox' }).click();
+    await expect(page.locator('button', { hasText: 'Run Query' })).toBeVisible();
+
+    // Run a vector query
+    await page.locator('button', { hasText: 'Run Query' }).click();
+    await expect(page.locator('text=Retrieved Evidence Chunks')).toBeVisible({ timeout: 15000 });
+
+    // Save screenshot
+    await page.screenshot({ path: 'screenshots/15_knowledge_base_view.png', fullPage: true });
+  });
+
+  test('16. Security & RBAC Governance Matrix View', async ({ page }) => {
+    // Navigate to Security tab
+    await page.locator('nav button', { hasText: 'Security & RBAC Matrix' }).click();
+
+    // Verify header
+    await expect(page.locator('text=Enterprise RBAC Governance & Security Matrix (Phase 3)')).toBeVisible();
+
+    // Verify Active Identity Claims card
+    await expect(page.locator('text=Authenticated User')).toBeVisible();
+    await expect(page.locator('text=Server-Resolved Role')).toBeVisible();
+
+    // Verify RBAC Matrix Table
+    await expect(page.locator('text=Standard Resolution')).toBeVisible();
+    await expect(page.locator('text=Financial Refund Recommendation')).toBeVisible();
+
+    // Verify Invariants cards
+    await expect(page.locator('text=Mandatory Rejection Rationale')).toBeVisible();
+    await expect(page.locator('text=Server-Side Identity Resolution')).toBeVisible();
+    await expect(page.locator('text=Write-Once Audit Immutability')).toBeVisible();
+
+    // Save screenshot
+    await page.screenshot({ path: 'screenshots/16_security_matrix_view.png', fullPage: true });
   });
 });

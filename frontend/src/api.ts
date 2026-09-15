@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FlowMind AI - Typed API Client (Phase 5)
  * Handles token-based session auth and structured error extraction (including RBAC 403s).
  */
@@ -9,8 +9,12 @@ import type {
   BenchmarkResultResponse,
   ChainVerificationResult,
   DemonstrationScenario,
+  KnowledgeSearchResult,
   Persona,
+  PolicyDocument,
   RetrievalMetrics,
+  SecurityMatrixResponse,
+  TicketItem,
   WorkflowInstance,
 } from './types';
 
@@ -155,5 +159,40 @@ export const api = {
 
   getRetrievalMetrics: async (token: string): Promise<RetrievalMetrics> => {
     return request('/api/evaluation/retrieval', { method: 'GET' }, token);
+  },
+
+  getPolicies: async (token: string): Promise<PolicyDocument[]> => {
+    return request('/api/knowledge/policies', { method: 'GET' }, token);
+  },
+
+  getTickets: async (
+    category?: string,
+    limit: number = 50,
+    token?: string
+  ): Promise<{ tickets: TicketItem[]; total: number; total_corpus: number; categories: string[] }> => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    params.append('limit', String(limit));
+    return request(`/api/knowledge/tickets?${params.toString()}`, { method: 'GET' }, token);
+  },
+
+  searchKnowledge: async (
+    query: string,
+    topK: number = 5,
+    scoreThreshold: number = 0.0,
+    token?: string
+  ): Promise<KnowledgeSearchResult> => {
+    return request(
+      '/api/knowledge/search',
+      {
+        method: 'POST',
+        body: JSON.stringify({ query, top_k: topK, score_threshold: scoreThreshold }),
+      },
+      token
+    );
+  },
+
+  getSecurityMatrix: async (token: string): Promise<SecurityMatrixResponse> => {
+    return request('/api/security/matrix', { method: 'GET' }, token);
   },
 };

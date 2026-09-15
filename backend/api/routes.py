@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - API Routes (Phase 3)
 FastAPI REST endpoints for investigation, human approval, audit trails, and personas.
 CRITICAL TRUST BOUNDARY: Approvals rely exclusively on server-resolved UserContext.
@@ -322,4 +322,183 @@ async def get_retrieval_metrics(
     harness = EvaluationHarness()
     rm = harness.run_retrieval_benchmark()
     return rm.model_dump()
+
+
+# ----------------------------------------------------------------------
+# 4. Knowledge Base & Policies Endpoints
+# ----------------------------------------------------------------------
+
+@router.get("/knowledge/policies", summary="List enterprise policy documents")
+def list_policies(current_user: UserContext = Depends(get_current_user)) -> List[Dict[str, Any]]:
+    """Retrieve full text of enterprise governance policies from disk."""
+    import os
+    from pathlib import Path
+    policy_dir = Path(__file__).parent.parent / "data" / "synthetic" / "policies"
+    policies = []
+    if os.path.exists(str(policy_dir)):
+        for fname in sorted(os.listdir(str(policy_dir))):
+            if fname.endswith(".md"):
+                fpath = policy_dir / fname
+                content = fpath.read_text(encoding="utf-8")
+                title = fname.replace(".md", "").replace("_", " ").title()
+                for line in content.splitlines():
+                    if line.startswith("# "):
+                        title = line.replace("# ", "").strip()
+                        break
+                policies.append({
+                    "filename": fname,
+                    "title": title,
+                    "content": content,
+                    "size_bytes": len(content.encode("utf-8")),
+                })
+    return policies
+
+
+@router.get("/knowledge/tickets", summary="List historical customer tickets")
+def list_tickets(
+    category: Optional[str] = None,
+    limit: int = 50,
+    current_user: UserContext = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Retrieve historical tickets from synthetic dataset for knowledge exploration."""
+    import json
+    from pathlib import Path
+    tickets_path = Path(__file__).parent.parent / "data" / "synthetic" / "tickets.json"
+    if not tickets_path.exists():
+        return {"tickets": [], "total": 0, "categories": []}
+    
+    with open(tickets_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    categories = sorted(list(set(t.get("issue_category", "general") for t in data if t.get("issue_category"))))
+    
+    if category and category.lower() != "all":
+        filtered = [t for t in data if t.get("issue_category") == category]
+    else:
+        filtered = data
+        
+    return {
+        "tickets": filtered[:limit],
+        "total": len(filtered),
+        "total_corpus": len(data),
+        "categories": categories,
+    }
+
+
+@router.post("/knowledge/search", summary="Interactive vector retrieval sandbox")
+def search_knowledge(
+    payload: Dict[str, Any],
+    current_user: UserContext = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Execute live semantic retrieval against pgvector / knowledge backbone."""
+    import time
+    from backend.retrieval.models import RetrievalQuery
+    from backend.retrieval.retriever import retrieve
+
+    query_text = payload.get("query", "").strip()
+    if not query_text:
+        raise HTTPException(status_code=400, detail="Query text is required.")
+    
+    top_k = int(payload.get("top_k", 5))
+    score_threshold = float(payload.get("score_threshold", 0.0))
+
+    t0 = time.perf_counter()
+    rq = RetrievalQuery(
+        query_text=query_text,
+        top_k=top_k,
+        score_threshold=score_threshold,
+    )
+    result = retrieve(rq)
+    latency_ms = (time.perf_counter() - t0) * 1000.0
+
+    return {
+        "query": query_text,
+        "latency_ms": round(latency_ms, 2),
+        "total_retrieved": len(result.chunks),
+        "chunks": [
+            {
+                "chunk_id": str(c.chunk_id),
+                "source_type": c.source_type,
+                "source_id": c.source_id,
+                "chunk_index": c.chunk_index,
+                "content": c.content,
+                "similarity_score": round(c.score, 4),
+                "metadata": c.metadata,
+                "citation": c.citation,
+            }
+            for c in result.chunks
+        ],
+    }
+
+
+# ----------------------------------------------------------------------
+# 5. Security & RBAC Governance Endpoints
+# ----------------------------------------------------------------------
+
+@router.get("/security/matrix", summary="Get complete RBAC role-permission matrix")
+def get_security_matrix(current_user: UserContext = Depends(get_current_user)) -> Dict[str, Any]:
+    """Retrieve full RBAC permission matrix, action sensitivity, and governance rules."""
+    from backend.security.models import UserRole
+    from backend.reasoning.models import ActionType
+
+    roles = [r.value for r in UserRole]
+    actions = [
+        {
+            "action_type": ActionType.RESOLVE_STANDARD.value,
+            "label": "Standard Resolution",
+            "tier": "Tier 1",
+            "sensitive": False,
+            "description": "Standard guidance, FAQ responses, or routine service fulfillment",
+            "authorized_roles": ["support_agent", "team_lead", "manager", "admin"],
+            "requires_approval": False,
+        },
+        {
+            "action_type": ActionType.REQUEST_CUSTOMER_INFO.value,
+            "label": "Request Additional Info",
+            "tier": "Tier 1",
+            "sensitive": False,
+            "description": "Inquire customer for invoice details, device logs, or clarifications",
+            "authorized_roles": ["support_agent", "team_lead", "manager", "admin"],
+            "requires_approval": False,
+        },
+        {
+            "action_type": ActionType.TRANSFER_TEAM.value,
+            "label": "Team Routing Transfer",
+            "tier": "Tier 2",
+            "sensitive": True,
+            "description": "Re-assign complaint to specialized operational queues (e.g. Engineering, Logistics)",
+            "authorized_roles": ["team_lead", "manager", "admin"],
+            "requires_approval": True,
+        },
+        {
+            "action_type": ActionType.ISSUE_REFUND_RECOMMENDATION.value,
+            "label": "Financial Refund Recommendation",
+            "tier": "Tier 3",
+            "sensitive": True,
+            "description": "Approve monetary credit or refund disbursement (threshold > $30 requires Manager)",
+            "authorized_roles": ["manager", "admin"],
+            "requires_approval": True,
+        },
+        {
+            "action_type": ActionType.ESCALATE_TICKET.value,
+            "label": "Hierarchical Escalation",
+            "tier": "Tier 2 - Tier 4",
+            "sensitive": True,
+            "description": "L1 (Team Lead), L2/L3 (Manager), L4 Executive (Admin)",
+            "authorized_roles": ["team_lead", "manager", "admin"],
+            "requires_approval": True,
+        },
+    ]
+
+    return {
+        "roles": roles,
+        "actions": actions,
+        "governance_rules": {
+            "rejection_rationale_mandatory": True,
+            "parameter_modification_enforced": True,
+            "server_token_resolution": True,
+            "hash_chain_immutability": True,
+        },
+    }
+
 

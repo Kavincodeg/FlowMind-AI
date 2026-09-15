@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FlowMind AI - Frontend Data Types (Phase 5)
  * Strict typing aligned with FastAPI Pydantic schemas.
  */
@@ -176,3 +176,70 @@ export interface RetrievalMetrics {
   mrr: number;
   queries_evaluated: number;
 }
+
+export interface PolicyDocument {
+  filename: string;
+  title: string;
+  content: string;
+  size_bytes: number;
+}
+
+export interface TicketItem {
+  ticket_id: string;
+  customer_id: string;
+  customer_name: string;
+  issue_category: string;
+  issue_description: string;
+  priority: string;
+  status: string;
+  sla_breach: boolean;
+  assigned_team?: string;
+  sla_deadline?: string;
+}
+
+export interface KnowledgeSearchChunk {
+  chunk_id: string;
+  source_type: string;
+  source_id: string;
+  chunk_index: number;
+  content: string;
+  similarity_score: number;
+  citation: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface KnowledgeSearchResult {
+  query: string;
+  latency_ms: number;
+  total_retrieved: number;
+  chunks: KnowledgeSearchChunk[];
+}
+
+export interface ActionPermission {
+  action_type: string;
+  label: string;
+  tier: string;
+  sensitive: boolean;
+  description: string;
+  authorized_roles: string[];
+  requires_approval: boolean;
+}
+
+export interface SecurityMatrixResponse {
+  roles: string[];
+  actions: ActionPermission[];
+  governance_rules: {
+    rejection_rationale_mandatory: boolean;
+    parameter_modification_enforced: boolean;
+    server_token_resolution: boolean;
+    hash_chain_immutability: boolean;
+  };
+}
+
+export interface UserMeResponse {
+  user_id: string;
+  name: string;
+  role: string;
+  department: string;
+}
+

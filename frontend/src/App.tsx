@@ -5,14 +5,16 @@ import { Header } from './components/Header';
 import { InvestigationConsole } from './components/InvestigationConsole';
 import { AuditExplorer } from './components/AuditExplorer';
 import { BenchmarkDashboard } from './components/BenchmarkDashboard';
-import { ShieldIcon, LayersIcon, HashIcon } from './components/Icons';
+import { KnowledgeBaseView } from './components/KnowledgeBaseView';
+import { GovernanceMatrixView } from './components/GovernanceMatrixView';
+import { ShieldIcon, LayersIcon, HashIcon, DatabaseIcon, LockIcon } from './components/Icons';
 
 export const App: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activePersona, setActivePersona] = useState<Persona | null>(null);
   const [scenarios, setScenarios] = useState<DemonstrationScenario[]>([]);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'workflow' | 'audit' | 'benchmark'>('workflow');
+  const [activeTab, setActiveTab] = useState<'workflow' | 'audit' | 'benchmark' | 'knowledge' | 'governance'>('workflow');
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowInstance | null>(null);
 
   // Initialize application data
@@ -78,6 +80,22 @@ export const App: React.FC = () => {
         >
           <LayersIcon size={14} /> Empirical Benchmarks
         </button>
+
+        <button
+          type="button"
+          className={`nav-tab ${activeTab === 'knowledge' ? 'active' : ''}`}
+          onClick={() => setActiveTab('knowledge')}
+        >
+          <DatabaseIcon size={14} /> Knowledge Base & Retrieval
+        </button>
+
+        <button
+          type="button"
+          className={`nav-tab ${activeTab === 'governance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('governance')}
+        >
+          <LockIcon size={14} /> Security & RBAC Matrix
+        </button>
       </nav>
 
       {/* Main View Area */}
@@ -101,6 +119,10 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'benchmark' && <BenchmarkDashboard activePersona={activePersona} />}
+
+            {activeTab === 'knowledge' && <KnowledgeBaseView activePersona={activePersona} />}
+
+            {activeTab === 'governance' && <GovernanceMatrixView activePersona={activePersona} />}
           </>
         ) : (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '3rem 0', textAlign: 'center' }}>
@@ -126,7 +148,9 @@ export const App: React.FC = () => {
           <strong>FlowMind AI</strong> — Final-Year Project Prototype | Research Question: Closed-Loop Governance vs Plain RAG
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <span>95/95 Unit Tests Passing</span>
+          <span>110 Unit Tests Passing</span>
+          <span>9 Integration Tests Passing</span>
+          <span>16 Playwright E2E Tests</span>
           <span>SHA-256 Hash Chain Active</span>
           <span>Server-Side RBAC Enforced</span>
         </div>
