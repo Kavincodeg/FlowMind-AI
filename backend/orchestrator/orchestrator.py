@@ -1,4 +1,4 @@
-"""
+﻿"""
 FlowMind AI - Workflow Orchestrator (Phase 3)
 Coordinates the complete lifecycle of customer complaint investigations:
   retrieve -> reason -> recommend -> approve (RBAC-gated) -> execute (mock connector) -> audit
@@ -11,6 +11,7 @@ import time
 from typing import Dict, Optional
 import uuid
 
+from backend.audit.chain import build_event_chain
 from backend.audit.models import AuditRecord
 from backend.audit.service import AuditService, get_audit_service
 from backend.connectors.base import EnterpriseConnector, ExecutionRequest, UnauthorizedExecutionError
@@ -268,35 +269,118 @@ class WorkflowOrchestrator:
     # ------------------------------------------------------------------
 
     def _finalize_audit(self, instance: WorkflowInstance, terminal_state: str, duration_ms: float) -> None:
-        """Create and store a finalized AuditRecord."""
+        """Create and store a finalized AuditRecord with a real SHA-256 hash chain.
+
+        The chain_events field is built by build_event_chain() from audit/chain.py,
+        which computes a genuine SHA-256 per-event hash linking each lifecycle stage
+        to the previous one.  Once recorded, this chain is never recomputed or
+        overwritten (enforced by AuditService.record_audit()).
+        """
         ro = instance.reasoning_output
+        wf_id = instance.workflow_id
+        started_at = instance.started_at
+        completed_at = instance.completed_at or datetime.now(timezone.utc).isoformat()
+
+        # ------------------------------------------------------------------
+        # Build content payloads for each lifecycle event.
+        # All Pydantic models are serialised via .model_dump(mode='json') so that
+        # datetimes, UUIDs and Enums become JSON-native types before canonical_json()
+        # is called.  The verify path applies the same pre-conversion, ensuring
+        # write-time and verify-time hashes are byte-for-bit identical.
+        # ------------------------------------------------------------------
+        request_payload = {
+            "customer_id": instance.request.customer_id,
+            "customer_name": instance.request.customer_name,
+            "issue_summary": instance.request.issue_summary,
+            "requester_id": instance.requester.user_id,
+            "requester_role": instance.requester.role.value,
+        }
+        retrieval_summary = ro.retrieval_summary if ro else {}
+        evidence_citations = [c.model_dump(mode="json") for c in ro.citations] if ro else []
+        reasoning_output_dict = {
+            "status": ro.status,
+            "abstention_reason": ro.abstention_reason.value if ro and ro.abstention_reason else None,
+            "root_cause": ro.identified_root_cause,
+            "rationale": ro.rationale,
+            "confidence_score": ro.confidence_score,
+            "indirect_injection_detected": ro.indirect_injection_detected,
+            "recommendation": ro.recommendation.model_dump(mode="json") if ro and ro.recommendation else None,
+        } if ro else {}
+
+        approval_record = instance.approval_record  # already a plain dict
+        execution_record = instance.execution_record.model_dump(mode="json") if instance.execution_record else None
+
+        # ------------------------------------------------------------------
+        # Assemble raw lifecycle events (no hashes yet)
+        # ------------------------------------------------------------------
+        short_id = wf_id[:8]
+        raw_events = [
+            {
+                "event_id": f"EVT-001-{short_id}",
+                "stage": "REQUEST_RECEIVED",
+                "timestamp": started_at,
+                "actor": instance.requester.user_id,
+                "details": request_payload,
+            },
+            {
+                "event_id": f"EVT-002-{short_id}",
+                "stage": "EVIDENCE_RETRIEVED",
+                "timestamp": started_at,
+                "actor": "VectorRetriever (pgvector)",
+                "details": {
+                    "retrieval_summary": retrieval_summary,
+                    "evidence_citations": evidence_citations,
+                },
+            },
+            {
+                "event_id": f"EVT-003-{short_id}",
+                "stage": "REASONING_COMPLETED",
+                "timestamp": started_at,
+                "actor": "ReasoningEngine",
+                "details": reasoning_output_dict,
+            },
+        ]
+
+        if approval_record is not None:
+            raw_events.append({
+                "event_id": f"EVT-004-{short_id}",
+                "stage": "APPROVAL_SUBMITTED",
+                "timestamp": approval_record.get("timestamp", completed_at),
+                "actor": approval_record.get("approver_id", "unknown"),
+                "details": approval_record,
+            })
+
+        if execution_record is not None:
+            raw_events.append({
+                "event_id": f"EVT-005-{short_id}",
+                "stage": "ACTION_DISPATCHED",
+                "timestamp": execution_record.get("timestamp", completed_at),
+                "actor": execution_record.get("dispatched_to", "MockEnterpriseConnector"),
+                "details": execution_record,
+            })
+
+        # ------------------------------------------------------------------
+        # Compute the real SHA-256 hash chain
+        # ------------------------------------------------------------------
+        chain_events = build_event_chain(raw_events)
+
+        # ------------------------------------------------------------------
+        # Persist the AuditRecord
+        # ------------------------------------------------------------------
         audit_record = AuditRecord(
             audit_id=str(uuid.uuid4()),
-            workflow_id=instance.workflow_id,
+            workflow_id=wf_id,
             terminal_state=terminal_state,
-            started_at=instance.started_at,
-            completed_at=instance.completed_at or datetime.now(timezone.utc).isoformat(),
+            started_at=started_at,
+            completed_at=completed_at,
             duration_ms=round(duration_ms, 2),
-            request_payload={
-                "customer_id": instance.request.customer_id,
-                "customer_name": instance.request.customer_name,
-                "issue_summary": instance.request.issue_summary,
-                "requester_id": instance.requester.user_id,
-                "requester_role": instance.requester.role.value,
-            },
-            retrieval_summary=ro.retrieval_summary if ro else {},
-            evidence_citations=[c.model_dump() for c in ro.citations] if ro else [],
-            reasoning_output={
-                "status": ro.status,
-                "abstention_reason": ro.abstention_reason.value if ro and ro.abstention_reason else None,
-                "root_cause": ro.identified_root_cause,
-                "rationale": ro.rationale,
-                "confidence_score": ro.confidence_score,
-                "indirect_injection_detected": ro.indirect_injection_detected,
-                "recommendation": ro.recommendation.model_dump() if ro and ro.recommendation else None,
-            } if ro else {},
-            approval_record=instance.approval_record,
-            execution_record=instance.execution_record.model_dump() if instance.execution_record else None,
+            request_payload=request_payload,
+            retrieval_summary=retrieval_summary,
+            evidence_citations=evidence_citations,
+            reasoning_output=reasoning_output_dict,
+            approval_record=approval_record,
+            execution_record=execution_record,
+            chain_events=chain_events,
         )
         self.audit_service.record_audit(audit_record)
 

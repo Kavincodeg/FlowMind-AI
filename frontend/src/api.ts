@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FlowMind AI - Typed API Client (Phase 5)
  * Handles token-based session auth and structured error extraction (including RBAC 403s).
  */
@@ -7,6 +7,7 @@ import type {
   AuditListItem,
   AuditTrail,
   BenchmarkResultResponse,
+  ChainVerificationResult,
   DemonstrationScenario,
   Persona,
   RetrievalMetrics,
@@ -138,6 +139,10 @@ export const api = {
 
   getWorkflowAudit: async (workflowId: string, token: string): Promise<AuditTrail> => {
     return request(`/api/workflow/${workflowId}/audit`, { method: 'GET' }, token);
+  },
+
+  verifyAuditChain: async (workflowId: string, token: string): Promise<ChainVerificationResult> => {
+    return request(`/api/workflow/${workflowId}/audit/verify`, { method: 'GET' }, token);
   },
 
   listAudits: async (token: string): Promise<AuditListItem[]> => {

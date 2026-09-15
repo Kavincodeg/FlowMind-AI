@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import type { DemonstrationScenario, Persona, WorkflowInstance } from '../types';
 import { api } from '../api';
 import { EvidenceDrawer } from './EvidenceDrawer';
@@ -191,7 +191,7 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
               <div className="timeline-line" />
             </div>
             <div className="timeline-content">
-              <div className="timeline-heading">1. Evidence Retrieval (ChromaDB / pgvector)</div>
+              <div className="timeline-heading">1. Evidence Retrieval (pgvector)</div>
               <div className="timeline-desc">
                 {workflow?.reasoning?.citations
                   ? `Retrieved ${workflow.reasoning.citations.length} grounded chunks matching customer history & policies.`

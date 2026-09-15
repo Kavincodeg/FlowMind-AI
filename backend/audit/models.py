@@ -1,4 +1,4 @@
-"""
+﻿"""
 FlowMind AI - Audit & Outcome Tracking Models (Phase 3)
 Data models for complete, tamper-evident audit logging.
 INVARIANT: Conditional audit completeness verified across all terminal states.
@@ -28,6 +28,11 @@ class AuditRecord(BaseModel):
     reasoning_output: Dict[str, Any] = Field(default_factory=dict)
     approval_record: Optional[Dict[str, Any]] = None
     execution_record: Optional[Dict[str, Any]] = None
+
+    # SHA-256 tamper-evident hash chain events.
+    # Written once by _finalize_audit() via build_event_chain(); never recomputed
+    # or overwritten afterward.  Immutability is enforced by AuditService.record_audit().
+    chain_events: List[Dict[str, Any]] = Field(default_factory=list)
 
     @property
     def is_complete(self) -> bool:

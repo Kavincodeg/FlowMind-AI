@@ -1,4 +1,4 @@
-"""
+﻿"""
 FlowMind AI - Audit Service (Phase 3)
 In-memory and thread-safe audit log service with tamper-evident export capability.
 """
@@ -13,6 +13,17 @@ from backend.audit.models import AuditRecord
 logger = logging.getLogger(__name__)
 
 
+class DuplicateAuditRecordError(Exception):
+    """Raised when record_audit() is called for a workflow_id that already has a stored record.
+
+    This enforces hash-chain immutability at the service layer: once a chain has been
+    written for a given workflow_id it must never be overwritten or recomputed.
+    If record_audit() could silently overwrite an existing record, a buggy retry or
+    future code path could replace the entire finalized chain with a new one,
+    destroying the tamper-evidence guarantee.
+    """
+
+
 class AuditService:
     """
     Centralized service for recording and retrieving audit trails.
@@ -23,14 +34,26 @@ class AuditService:
         self._lock = Lock()
 
     def record_audit(self, record: AuditRecord) -> None:
-        """Store an audit record."""
+        """Store an audit record.
+
+        Raises:
+            DuplicateAuditRecordError: If a record for the same workflow_id already
+                exists.  This is a hard invariant: hash chains must be written once
+                and never overwritten.
+        """
         with self._lock:
+            if record.workflow_id in self._records:
+                raise DuplicateAuditRecordError(
+                    f"Audit record for workflow '{record.workflow_id}' already exists "
+                    f"and cannot be overwritten. Hash chain immutability must be preserved."
+                )
             self._records[record.workflow_id] = record
         logger.info(
-            "Audit record finalized: workflow=%s, terminal_state=%s, is_complete=%s",
+            "Audit record finalized: workflow=%s, terminal_state=%s, is_complete=%s, chain_length=%d",
             record.workflow_id,
             record.terminal_state,
             record.is_complete,
+            len(record.chain_events),
         )
 
     def get_audit(self, workflow_id: str) -> Optional[AuditRecord]:
@@ -69,6 +92,8 @@ class AuditService:
             },
             "human_governance": record.approval_record,
             "automation_execution": record.execution_record,
+            # Real SHA-256 hash chain events, written once at finalization.
+            "chain_events": record.chain_events,
         }
 
 

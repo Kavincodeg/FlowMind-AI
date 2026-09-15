@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import type { AuditListItem, AuditTrail, Persona } from '../types';
+﻿import React, { useEffect, useState } from 'react';
+import type { AuditListItem, AuditTrail, ChainVerificationResult, Persona } from '../types';
 import { api } from '../api';
 import { HashIcon, CheckCircleIcon, RefreshIcon, LayersIcon } from './Icons';
 
@@ -15,10 +15,10 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
   const [auditList, setAuditList] = useState<AuditListItem[]>([]);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(currentWorkflowId);
   const [auditDetail, setAuditDetail] = useState<AuditTrail | null>(null);
+  const [chainVerification, setChainVerification] = useState<ChainVerificationResult | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [chainValid, setChainValid] = useState<boolean | null>(null);
 
   const fetchAudits = async () => {
     setIsLoadingList(true);
@@ -38,109 +38,21 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
     }
   };
 
-  const buildAuditEvents = (detail: any): any[] => {
-    if (detail.events && detail.events.length > 0) return detail.events;
-
-    const events: any[] = [];
-    const startedAt = detail.timeline?.started_at || new Date().toISOString();
-    let prevHash = '0000000000000000000000000000000000000000000000000000000000000000';
-
-    // 1. Request Received
-    const reqPayload = detail.investigation?.request || {};
-    const reqHash = 'a4f89d' + Math.abs(JSON.stringify(reqPayload).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).padStart(58, '0');
-    events.push({
-      event_id: `EVT-001-${detail.workflow_id?.slice(0, 8)}`,
-      stage: 'REQUEST_RECEIVED',
-      timestamp: startedAt,
-      actor: reqPayload.customer_name || 'Customer / Requester',
-      details: reqPayload,
-      block_hash: reqHash,
-      parent_hash: prevHash,
-    });
-    prevHash = reqHash;
-
-    // 2. Evidence Retrieved
-    const retPayload = detail.investigation?.retrieval || {};
-    const retHash = 'b7e21c' + Math.abs(JSON.stringify(retPayload).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).padStart(58, '0');
-    events.push({
-      event_id: `EVT-002-${detail.workflow_id?.slice(0, 8)}`,
-      stage: 'EVIDENCE_RETRIEVED',
-      timestamp: startedAt,
-      actor: 'VectorRetriever (ChromaDB / pgvector)',
-      details: retPayload,
-      block_hash: retHash,
-      parent_hash: prevHash,
-    });
-    prevHash = retHash;
-
-    // 3. Reasoning Completed
-    const rsnPayload = detail.investigation?.reasoning || {};
-    const rsnHash = 'c9103e' + Math.abs(JSON.stringify(rsnPayload).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).padStart(58, '0');
-    events.push({
-      event_id: `EVT-003-${detail.workflow_id?.slice(0, 8)}`,
-      stage: 'REASONING_COMPLETED',
-      timestamp: startedAt,
-      actor: 'ReasoningEngine',
-      details: rsnPayload,
-      block_hash: rsnHash,
-      parent_hash: prevHash,
-    });
-    prevHash = rsnHash;
-
-    // 4. Human Governance (if present)
-    if (detail.human_governance) {
-      const govPayload = detail.human_governance;
-      const govHash = 'd8214f' + Math.abs(JSON.stringify(govPayload).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).padStart(58, '0');
-      events.push({
-        event_id: `EVT-004-${detail.workflow_id?.slice(0, 8)}`,
-        stage: 'APPROVAL_SUBMITTED',
-        timestamp: govPayload.submitted_at || startedAt,
-        actor: govPayload.approver_name || 'Human Approver',
-        details: govPayload,
-        block_hash: govHash,
-        parent_hash: prevHash,
-      });
-      prevHash = govHash;
-    }
-
-    // 5. Automation Execution (if present)
-    if (detail.automation_execution) {
-      const execPayload = detail.automation_execution;
-      const execHash = 'e5390a' + Math.abs(JSON.stringify(execPayload).split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(16).padStart(58, '0');
-      events.push({
-        event_id: `EVT-005-${detail.workflow_id?.slice(0, 8)}`,
-        stage: 'ACTION_DISPATCHED',
-        timestamp: execPayload.timestamp || startedAt,
-        actor: execPayload.dispatched_to || 'MockEnterpriseConnector',
-        details: execPayload,
-        block_hash: execHash,
-        parent_hash: prevHash,
-      });
-    }
-
-    return events;
-  };
-
   const fetchAuditDetail = async (wfId: string) => {
     setIsLoadingDetail(true);
     setError(null);
+    setChainVerification(null);
     try {
-      const detail: any = await api.getWorkflowAudit(wfId, activePersona.token);
-      const builtEvents = buildAuditEvents(detail);
-      detail.events = builtEvents;
+      // Fetch audit detail and the server-side chain verification in parallel.
+      // The verify endpoint independently re-derives every SHA-256 hash from the
+      // stored content fields, so the result is a genuine tamper-detection check —
+      // not a client-side fabrication.
+      const [detail, verification] = await Promise.all([
+        api.getWorkflowAudit(wfId, activePersona.token) as Promise<AuditTrail>,
+        api.verifyAuditChain(wfId, activePersona.token),
+      ]);
       setAuditDetail(detail);
-
-      // Verify cryptographic hash chain on the client
-      let valid = true;
-      if (builtEvents.length > 0) {
-        for (let i = 1; i < builtEvents.length; i++) {
-          if (builtEvents[i].parent_hash !== builtEvents[i - 1].block_hash) {
-            valid = false;
-            break;
-          }
-        }
-      }
-      setChainValid(valid);
+      setChainVerification(verification);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -160,6 +72,9 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
       fetchAuditDetail(selectedWorkflowId);
     }
   }, [selectedWorkflowId]);
+
+  const chainValid = chainVerification?.valid ?? null;
+  const failedAtIndex = chainVerification?.failed_at_index ?? null;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.25rem', alignItems: 'start' }}>
@@ -241,7 +156,9 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
             >
               <CheckCircleIcon size={12} />
-              {chainValid ? 'Cryptographic Chain Verified (Intact)' : 'Chain Integrity Compromised'}
+              {chainValid
+                ? `Cryptographic Chain Verified (Intact) — ${chainVerification?.chain_length ?? 0} blocks`
+                : `Chain Integrity Compromised at block #${(failedAtIndex ?? 0) + 1} (${chainVerification?.failed_event_id ?? 'unknown'})`}
             </span>
           )}
         </div>
@@ -278,7 +195,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
               <div style={{ backgroundColor: 'var(--bg-surface-elevated)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recorded Events</div>
                 <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-                  {auditDetail.events ? auditDetail.events.length : 0} Blocks
+                  {auditDetail.chain_events ? auditDetail.chain_events.length : 0} Blocks
                 </div>
               </div>
             </div>
@@ -289,68 +206,79 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                 Sequenced Audit Blocks (SHA-256 Parent Hash Linkage)
               </span>
 
-              {auditDetail.events && auditDetail.events.length > 0 ? (
-                auditDetail.events.map((evt, idx) => (
-                  <div
-                    key={evt.event_id || idx}
-                    style={{
-                      backgroundColor: 'var(--bg-surface-elevated)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-md)',
-                      padding: '0.85rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.45rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="badge badge-neutral" style={{ fontFamily: 'var(--font-mono)' }}>
-                          BLOCK #{idx + 1}
+              {auditDetail.chain_events && auditDetail.chain_events.length > 0 ? (
+                auditDetail.chain_events.map((evt, idx) => {
+                  const isFailed = failedAtIndex !== null && idx === failedAtIndex;
+                  return (
+                    <div
+                      key={evt.event_id || idx}
+                      style={{
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        border: `1px solid ${isFailed ? 'var(--status-danger-text)' : 'var(--border-default)'}`,
+                        borderRadius: 'var(--radius-md)',
+                        padding: '0.85rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.45rem',
+                        boxShadow: isFailed ? '0 0 0 2px rgba(var(--status-danger-rgb), 0.18)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="badge badge-neutral" style={{ fontFamily: 'var(--font-mono)' }}>
+                            BLOCK #{idx + 1}
+                          </span>
+                          <strong style={{ fontSize: '0.825rem', color: 'var(--text-primary)' }}>
+                            {evt.stage}
+                          </strong>
+                          {isFailed && (
+                            <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
+                              INTEGRITY FAILURE
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Actor: {evt.actor} | {new Date(evt.timestamp).toLocaleTimeString()}
                         </span>
-                        <strong style={{ fontSize: '0.825rem', color: 'var(--text-primary)' }}>
-                          {evt.stage}
-                        </strong>
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Actor: {evt.actor} | {new Date(evt.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.72rem', marginTop: '0.25rem' }}>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Current Hash: </span>
-                        <span className="hash-pill" style={{ color: 'var(--status-success-text)' }}>
-                          {evt.block_hash ? `${evt.block_hash.slice(0, 16)}...${evt.block_hash.slice(-8)}` : 'GENESIS'}
-                        </span>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.72rem', marginTop: '0.25rem' }}>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Current Hash: </span>
+                          <span className="hash-pill" style={{ color: isFailed ? 'var(--status-danger-text)' : 'var(--status-success-text)' }}>
+                            {evt.block_hash ? `${evt.block_hash.slice(0, 16)}...${evt.block_hash.slice(-8)}` : 'GENESIS'}
+                          </span>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Parent Hash: </span>
+                          <span className="hash-pill">
+                            {evt.parent_hash && evt.parent_hash !== '0'.repeat(64)
+                              ? `${evt.parent_hash.slice(0, 16)}...${evt.parent_hash.slice(-8)}`
+                              : '0000000000000000 (GENESIS)'}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Parent Hash: </span>
-                        <span className="hash-pill">
-                          {evt.parent_hash ? `${evt.parent_hash.slice(0, 16)}...${evt.parent_hash.slice(-8)}` : '0000000000000000 (GENESIS)'}
-                        </span>
-                      </div>
-                    </div>
 
-                    {evt.details && Object.keys(evt.details).length > 0 && (
-                      <pre
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: '0.72rem',
-                          backgroundColor: 'var(--bg-app)',
-                          padding: '0.45rem',
-                          borderRadius: 'var(--radius-sm)',
-                          color: 'var(--text-secondary)',
-                          maxHeight: '120px',
-                          overflowY: 'auto',
-                          marginTop: '0.25rem',
-                        }}
-                      >
-                        {JSON.stringify(evt.details, null, 2)}
-                      </pre>
-                    )}
-                  </div>
-                ))
+                      {evt.details && Object.keys(evt.details).length > 0 && (
+                        <pre
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '0.72rem',
+                            backgroundColor: 'var(--bg-app)',
+                            padding: '0.45rem',
+                            borderRadius: 'var(--radius-sm)',
+                            color: 'var(--text-secondary)',
+                            maxHeight: '120px',
+                            overflowY: 'auto',
+                            marginTop: '0.25rem',
+                          }}
+                        >
+                          {JSON.stringify(evt.details, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '1rem 0' }}>
                   No block events found in this audit record.

@@ -1,4 +1,4 @@
-"""
+﻿"""
 FlowMind AI - API Routes (Phase 3)
 FastAPI REST endpoints for investigation, human approval, audit trails, and personas.
 CRITICAL TRUST BOUNDARY: Approvals rely exclusively on server-resolved UserContext.
@@ -9,6 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from backend.audit.chain import verify_event_chain
 from backend.audit.service import AuditService, get_audit_service
 from backend.orchestrator.models import ApprovalSubmission, WorkflowInstance
 from backend.orchestrator.orchestrator import WorkflowOrchestrator, get_orchestrator
@@ -201,6 +202,34 @@ def get_workflow_audit(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Audit record not found for workflow '{workflow_id}'.")
 
+
+@router.get("/workflow/{workflow_id}/audit/verify", summary="Verify SHA-256 tamper-evident audit hash chain")
+def verify_workflow_audit_chain(
+    workflow_id: str,
+    audit_service: AuditService = Depends(get_audit_service),
+) -> Dict[str, Any]:
+    """Re-derive every event hash server-side from stored content and confirm chain integrity.
+
+    This endpoint is entirely independent of the write path: it calls verify_event_chain()
+    from audit/chain.py which recomputes SHA-256 from scratch for each event and checks both
+    (a) content integrity (recomputed hash matches stored block_hash) and
+    (b) chain linkage (stored parent_hash matches previous event's block_hash).
+
+    Returns a real boolean result indicating whether the chain is intact, plus the index and
+    event_id of the first failing event if the chain is broken.
+    """
+    record = audit_service.get_audit(workflow_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Audit record not found for workflow '{workflow_id}'.")
+
+    result = verify_event_chain(record.chain_events)
+    return {
+        "workflow_id": workflow_id,
+        "chain_length": len(record.chain_events),
+        "valid": result["valid"],
+        "failed_at_index": result["failed_at_index"],
+        "failed_event_id": result["failed_event_id"],
+    }
 
 @router.get("/audits", summary="List all recorded audit records")
 def list_all_audits(

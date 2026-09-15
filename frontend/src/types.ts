@@ -1,4 +1,4 @@
-/**
+﻿/**
  * FlowMind AI - Frontend Data Types (Phase 5)
  * Strict typing aligned with FastAPI Pydantic schemas.
  */
@@ -111,10 +111,19 @@ export interface AuditTrail {
   started_at: string;
   completed_at: string | null;
   duration_ms: number;
-  events?: AuditEvent[];
-  chain_verified?: boolean;
+  // chain_events: real SHA-256 hash chain events from the backend.
+  // chain_verified is no longer stored here; it comes from the /audit/verify endpoint.
+  chain_events?: AuditEvent[];
 }
 
+
+export interface ChainVerificationResult {
+  workflow_id: string;
+  chain_length: number;
+  valid: boolean;
+  failed_at_index: number | null;
+  failed_event_id: string | null;
+}
 export interface AuditListItem {
   audit_id: string;
   workflow_id: string;
