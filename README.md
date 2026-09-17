@@ -127,8 +127,10 @@ FlowMind-AI/
 │   ├── security/             ← Identity & access control
 │   │   └── rbac.py           ← Role definitions, permission matrix & tokens
 │   └── tests/                ← Comprehensive test suite
+│       ├── test_api.py          ← FastAPI endpoint integration tests
 │       ├── test_audit_chain.py  ← SHA-256 chain, linkage & tamper tests
 │       ├── test_baseline.py     ← Plain-RAG baseline behavior tests
+│       ├── test_connector_and_audit.py ← Connector execution & audit trail tests
 │       ├── test_evaluation.py   ← Benchmark metrics & structural invariants
 │       ├── test_orchestration.py← State transitions & connector execution
 │       ├── test_rbac.py         ← Role permissions & token resolution tests
