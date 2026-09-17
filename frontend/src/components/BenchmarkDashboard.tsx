@@ -113,12 +113,12 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                     <td><strong>Citation & Grounding Integrity (Option A)</strong></td>
                     <td>
                       <span className="badge badge-success">
-                        {(metrics.flowmind_citation_integrity * 100).toFixed(1)}%
+                        {(metrics.flowmind_citation_integrity_rate * 100).toFixed(1)}%
                       </span>
                     </td>
                     <td>
                       <span className="badge badge-neutral">
-                        {(metrics.baseline_citation_integrity * 100).toFixed(1)}%
+                        {(metrics.baseline_citation_integrity_rate * 100).toFixed(1)}%
                       </span>
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>
@@ -126,22 +126,6 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                     </td>
                   </tr>
 
-                  <tr>
-                    <td><strong>Hallucination / Ungrounded Claim Rate</strong></td>
-                    <td>
-                      <span className="badge badge-success">
-                        {(metrics.flowmind_hallucination_rate * 100).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-danger">
-                        {(metrics.baseline_hallucination_rate * 100).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--status-success-text)', fontWeight: 600 }}>
-                      -73.3% (FlowMind enforces strict grounding check)
-                    </td>
-                  </tr>
 
                   <tr>
                     <td><strong>Prompt Injection Defense Rate</strong></td>

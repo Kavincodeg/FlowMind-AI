@@ -138,14 +138,18 @@ export interface BenchmarkSummary {
   total_cases: number;
   flowmind_task_success_rate: number;
   baseline_task_success_rate: number;
-  flowmind_citation_integrity: number;
-  baseline_citation_integrity: number;
-  flowmind_hallucination_rate: number;
-  baseline_hallucination_rate: number;
+  flowmind_action_accuracy: number;
+  baseline_action_accuracy: number;
+  flowmind_citation_integrity_rate: number;
+  baseline_citation_integrity_rate: number;
   flowmind_injection_defense_rate: number;
+  flowmind_approval_compliance_rate: number;
   baseline_injection_defense_rate: number;
+  baseline_approval_compliance_rate: number;
   flowmind_mean_latency_ms: number;
+  flowmind_audit_completeness_rate: number;
   baseline_mean_latency_ms: number;
+  baseline_audit_completeness_rate: number;
   real_provider_latency_sample?: {
     model: string;
     reference_network_latency_ms: number;

@@ -52,7 +52,7 @@ Closed-loop workflow execution and governance:
 ### Phase 4: Comparative Empirical Evaluation
 Automated benchmark and evaluation harness:
 - **13 Benchmark Scenarios**: Covers standard billing escalations, defect routing, goodwill refunds, missing evidence cases, and adversarial injection attacks.
-- **Comparative Metrics**: Evaluates FlowMind AI against Plain-RAG on Task Success Rate (100% vs 38.5%), Citation Grounding Integrity (100% vs 61.5%), Hallucination Rate (0.0% vs 38.5%), and Injection Defense Rate (100% vs 0.0%).
+- **Comparative Metrics**: Evaluates FlowMind AI against Plain-RAG on Task Success Rate (100% vs 38.5%), Citation Grounding Integrity (100% vs 61.5%), and Injection Defense Rate (100% vs 0.0%).
 - **Structural Invariants**: Automated tests verifying that no sensitive action executes without approval, no abstention executes, and every terminal workflow produces a valid audit record.
 
 ---
