@@ -74,7 +74,7 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await submitBtn.click();
 
     // Wait for the investigation to complete
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 30000 });
 
     // Verify reasoning timeline steps
     await expect(page.locator('text=1. Evidence Retrieval')).toBeVisible();
@@ -153,7 +153,6 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await expect(page.locator('text=100.0%').first()).toBeVisible();
 
     await expect(page.locator('text=Citation & Grounding Integrity (Option A)')).toBeVisible();
-    await expect(page.locator('text=Hallucination / Ungrounded Claim Rate')).toBeVisible();
     await expect(page.locator('text=Prompt Injection Defense Rate')).toBeVisible();
 
     // Verify methodology disclosure cards

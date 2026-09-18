@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Vector Store (Phase 1)
 
 Handles all PostgreSQL + pgvector interactions:
@@ -36,7 +36,8 @@ def _get_dsn() -> str:
         f"port={os.getenv('PGPORT', '5432')} "
         f"dbname={os.getenv('PGDATABASE', 'flowmind')} "
         f"user={os.getenv('PGUSER', 'flowmind')} "
-        f"password={os.getenv('PGPASSWORD', 'flowmind_dev')}"
+        f"password={os.getenv('PGPASSWORD', 'flowmind_dev')} "
+        f"connect_timeout={os.getenv('PGCONNECT_TIMEOUT', '1')}"
     )
 
 
