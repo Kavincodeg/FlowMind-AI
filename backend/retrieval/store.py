@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def _get_dsn() -> str:
     return (
-        f"host={os.getenv('PGHOST', 'localhost')} "
+        f"host={os.getenv('PGHOST', '127.0.0.1')} "
         f"port={os.getenv('PGPORT', '5432')} "
         f"dbname={os.getenv('PGDATABASE', 'flowmind')} "
         f"user={os.getenv('PGUSER', 'flowmind')} "

@@ -2,20 +2,22 @@ import React, { useEffect, useState } from 'react';
 import type { DemonstrationScenario, Persona, WorkflowInstance } from './types';
 import { api } from './api';
 import { Header } from './components/Header';
+import { HomeView } from './components/HomeView';
 import { InvestigationConsole } from './components/InvestigationConsole';
 import { AuditExplorer } from './components/AuditExplorer';
 import { BenchmarkDashboard } from './components/BenchmarkDashboard';
 import { KnowledgeBaseView } from './components/KnowledgeBaseView';
 import { GovernanceMatrixView } from './components/GovernanceMatrixView';
-import { ShieldIcon, LayersIcon, HashIcon, DatabaseIcon, LockIcon } from './components/Icons';
+import { ShieldIcon, LayersIcon, HashIcon, DatabaseIcon, LockIcon, HomeIcon } from './components/Icons';
 
 export const App: React.FC = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activePersona, setActivePersona] = useState<Persona | null>(null);
   const [scenarios, setScenarios] = useState<DemonstrationScenario[]>([]);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<'workflow' | 'audit' | 'benchmark' | 'knowledge' | 'governance'>('workflow');
+  const [activeTab, setActiveTab] = useState<'home' | 'workflow' | 'audit' | 'benchmark' | 'knowledge' | 'governance'>('home');
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowInstance | null>(null);
+  const [selectedAuditWorkflowId, setSelectedAuditWorkflowId] = useState<string | null>(null);
 
   // Initialize application data
   useEffect(() => {
@@ -47,7 +49,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* Top Header & Persona Switcher */}
+      {/* Top Header & Plain-Language Persona Switcher */}
       <Header
         personas={personas}
         activePersona={activePersona}
@@ -59,42 +61,56 @@ export const App: React.FC = () => {
       <nav className="tab-navigation" aria-label="Main Navigation">
         <button
           type="button"
+          id="nav-home"
+          className={`nav-tab ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
+        >
+          <HomeIcon size={14} /> Home
+        </button>
+
+        <button
+          type="button"
+          id="nav-investigate"
           className={`nav-tab ${activeTab === 'workflow' ? 'active' : ''}`}
           onClick={() => setActiveTab('workflow')}
         >
-          <ShieldIcon size={14} /> Investigation & Human Approval
+          <ShieldIcon size={14} /> Look into a case (Investigation &amp; Human Approval)
         </button>
 
         <button
           type="button"
+          id="nav-audit"
           className={`nav-tab ${activeTab === 'audit' ? 'active' : ''}`}
           onClick={() => setActiveTab('audit')}
         >
-          <HashIcon size={14} /> Cryptographic Audit Trail
+          <HashIcon size={14} /> Trust &amp; proof (Cryptographic Audit Trail)
         </button>
 
         <button
           type="button"
+          id="nav-benchmark"
           className={`nav-tab ${activeTab === 'benchmark' ? 'active' : ''}`}
           onClick={() => setActiveTab('benchmark')}
         >
-          <LayersIcon size={14} /> Empirical Benchmarks
+          <LayersIcon size={14} /> How this compares (Empirical Benchmarks)
         </button>
 
         <button
           type="button"
+          id="nav-knowledge"
           className={`nav-tab ${activeTab === 'knowledge' ? 'active' : ''}`}
           onClick={() => setActiveTab('knowledge')}
         >
-          <DatabaseIcon size={14} /> Knowledge Base & Retrieval
+          <DatabaseIcon size={14} /> Company guides (Knowledge Base &amp; Retrieval)
         </button>
 
         <button
           type="button"
+          id="nav-governance"
           className={`nav-tab ${activeTab === 'governance' ? 'active' : ''}`}
           onClick={() => setActiveTab('governance')}
         >
-          <LockIcon size={14} /> Security & RBAC Matrix
+          <LockIcon size={14} /> Who can do what (Security &amp; RBAC Matrix)
         </button>
       </nav>
 
@@ -102,18 +118,32 @@ export const App: React.FC = () => {
       <main className="app-main">
         {activePersona ? (
           <>
+            {activeTab === 'home' && (
+              <HomeView
+                activePersona={activePersona}
+                onNavigateToNewCase={() => setActiveTab('workflow')}
+                onSelectCase={(wfId) => {
+                  setSelectedAuditWorkflowId(wfId);
+                  setActiveTab('audit');
+                }}
+              />
+            )}
+
             {activeTab === 'workflow' && (
               <InvestigationConsole
                 scenarios={scenarios}
                 activePersona={activePersona}
                 workflow={currentWorkflow}
-                onWorkflowUpdated={(updated) => setCurrentWorkflow(updated)}
+                onWorkflowUpdated={(updated) => {
+                  setCurrentWorkflow(updated);
+                  setSelectedAuditWorkflowId(updated.workflow_id);
+                }}
               />
             )}
 
             {activeTab === 'audit' && (
               <AuditExplorer
-                currentWorkflowId={currentWorkflow?.workflow_id || null}
+                currentWorkflowId={selectedAuditWorkflowId || currentWorkflow?.workflow_id || null}
                 activePersona={activePersona}
               />
             )}
@@ -126,12 +156,12 @@ export const App: React.FC = () => {
           </>
         ) : (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '3rem 0', textAlign: 'center' }}>
-            Loading enterprise personas and security context...
+            Connecting to customer support system...
           </div>
         )}
       </main>
 
-      {/* Academic & Systems Footer */}
+      {/* Systems & Academic Footer */}
       <footer
         style={{
           borderTop: '1px solid var(--border-subtle)',
@@ -142,15 +172,17 @@ export const App: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           backgroundColor: 'var(--bg-app)',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
         }}
       >
         <div>
-          <strong>FlowMind AI</strong> — Final-Year Project Prototype | Research Question: Closed-Loop Governance vs Plain RAG
+          <strong>FlowMind AI</strong> — Everyday Customer Support Assistant &amp; Safe Action Review
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <span>110 Unit Tests Passing</span>
           <span>9 Integration Tests Passing</span>
-          <span>16 Playwright E2E Tests</span>
+          <span>16 Playwright Tests</span>
           <span>SHA-256 Hash Chain Active</span>
           <span>Server-Side RBAC Enforced</span>
         </div>

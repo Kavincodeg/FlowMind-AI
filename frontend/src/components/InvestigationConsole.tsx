@@ -1,9 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import type { DemonstrationScenario, Persona, WorkflowInstance } from '../types';
 import { api } from '../api';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import { ApprovalGate } from './ApprovalGate';
-import { SearchIcon, ShieldIcon, AlertTriangleIcon, CpuIcon } from './Icons';
+import { SearchIcon, ShieldIcon, AlertTriangleIcon } from './Icons';
 
 interface InvestigationConsoleProps {
   scenarios: DemonstrationScenario[];
@@ -56,7 +56,7 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError('Investigation pipeline failed.');
+        setError('Could not complete case review.');
       }
     } finally {
       setIsLoading(false);
@@ -67,16 +67,17 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
 
   return (
     <div className="investigation-grid">
-      {/* 1. Request Input & Scenarios Column */}
+      {/* 1. Request Input & Example Scenarios Column */}
       <div className="console-panel">
         <div className="panel-header">
           <div className="panel-title">
-            <SearchIcon size={16} /> Customer Complaint Request
+            <SearchIcon size={16} /> Look into a Customer Case
           </div>
         </div>
 
+        {/* Quick Example Scenarios */}
         <div className="scenarios-container">
-          <span className="scenarios-label">Preset Benchmark Scenarios</span>
+          <span className="scenarios-label">Try an example case:</span>
           {scenarios.map((sc) => (
             <button
               key={sc.id}
@@ -90,7 +91,9 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
                   {sc.id}
                 </span>
               </div>
-              <div className="scenario-category">{sc.category}</div>
+              <div className="scenario-category" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {sc.category}
+              </div>
               <div style={{ marginTop: '0.35rem' }}>
                 <span
                   className={`badge ${
@@ -109,47 +112,56 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
           ))}
         </div>
 
-        <form onSubmit={handleRunInvestigation} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <form
+          onSubmit={handleRunInvestigation}
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.65rem' }}
+        >
           <div className="form-group">
-            <label className="form-label" htmlFor="customer-id">
-              Customer ID
-            </label>
-            <input
-              id="customer-id"
-              type="text"
-              className="form-input"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="customer-name">
-              Customer Name
-            </label>
-            <input
-              id="customer-name"
-              type="text"
-              className="form-input"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="issue-summary">
-              Complaint Details / Operational Request
+            <label className="form-label" htmlFor="issue-summary" style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+              What did the customer say?
             </label>
             <textarea
               id="issue-summary"
               className="form-textarea"
               rows={4}
+              placeholder="Paste or type the customer's message, email, or complaint here..."
               value={issueSummary}
               onChange={(e) => setIssueSummary(e.target.value)}
               required
             />
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+              We'll check our company policies and past tickets to see what happened and what to do next.
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+            <div className="form-group">
+              <label className="form-label" htmlFor="customer-id">
+                Customer ID
+              </label>
+              <input
+                id="customer-id"
+                type="text"
+                className="form-input"
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="customer-name">
+                Customer Name
+              </label>
+              <input
+                id="customer-name"
+                type="text"
+                className="form-input"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
           {error && (
@@ -164,26 +176,27 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
             id="btn-run-investigation"
             className="btn btn-primary"
             disabled={isLoading || !issueSummary.trim()}
+            style={{ fontWeight: 600, padding: '0.65rem 1rem' }}
           >
-            {isLoading ? 'Retrieving & Reasoning...' : 'Run Investigation & Reasoning'}
+            {isLoading ? 'Looking into what happened...' : 'Look into what happened'}
           </button>
         </form>
       </div>
 
-      {/* 2. Reasoning & Evidence Column */}
+      {/* 2. What we found & Timeline Column */}
       <div className="console-panel">
         <div className="panel-header">
           <div className="panel-title">
-            <CpuIcon size={16} /> Evidence-Grounded Reasoning
+            <ShieldIcon size={16} /> What we found
           </div>
           {workflow && (
             <span className="hash-pill" style={{ color: 'var(--text-secondary)' }}>
-              WF: {workflow.workflow_id}
+              Case WF: {workflow.workflow_id}
             </span>
           )}
         </div>
 
-        {/* Step Progression Timeline */}
+        {/* Plain Step Tracker Timeline */}
         <div className="timeline-list">
           <div className="timeline-item">
             <div className="timeline-marker">
@@ -191,26 +204,38 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
               <div className="timeline-line" />
             </div>
             <div className="timeline-content">
-              <div className="timeline-heading">1. Evidence Retrieval (pgvector)</div>
+              <div className="timeline-heading">
+                1. Evidence Retrieval — Checking past cases &amp; company guides
+              </div>
               <div className="timeline-desc">
-                {workflow?.reasoning?.citations
-                  ? `Retrieved ${workflow.reasoning.citations.length} grounded chunks matching customer history & policies.`
-                  : 'Awaiting complaint submission to execute vector similarity search.'}
+                {workflow?.reasoning?.citations && workflow.reasoning.citations.length > 0
+                  ? `Found ${workflow.reasoning.citations.length} relevant records in company policies and past tickets.`
+                  : 'Checks our knowledge base for similar tickets and official company rules.'}
               </div>
             </div>
           </div>
 
           <div className="timeline-item">
             <div className="timeline-marker">
-              <div className={`timeline-node ${reasoning?.status === 'grounded' ? 'done' : reasoning?.status === 'abstained' ? 'active' : ''}`}>2</div>
+              <div
+                className={`timeline-node ${
+                  reasoning?.status === 'grounded' ? 'done' : reasoning?.status === 'abstained' ? 'active' : ''
+                }`}
+              >
+                2
+              </div>
               <div className="timeline-line" />
             </div>
             <div className="timeline-content">
-              <div className="timeline-heading">2. Contextual Root Cause & Grounding Check</div>
+              <div className="timeline-heading">
+                2. Contextual Root Cause — What we think is going on
+              </div>
               <div className="timeline-desc">
-                {reasoning?.root_cause
-                  ? `Root Cause Identified: ${reasoning.root_cause}`
-                  : 'Verifies claims exclusively against retrieved evidence to prevent hallucinations.'}
+                {reasoning?.root_cause ? (
+                  <strong style={{ color: 'var(--text-primary)' }}>{reasoning.root_cause}</strong>
+                ) : (
+                  'Explains what caused the issue, using only verified facts from the retrieved records.'
+                )}
               </div>
             </div>
           </div>
@@ -230,50 +255,54 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
               </div>
             </div>
             <div className="timeline-content">
-              <div className="timeline-heading">3. Security & Indirect Injection Guardrail</div>
+              <div className="timeline-heading">
+                3. Security &amp; Indirect Injection Guardrail — Safety check
+              </div>
               <div className="timeline-desc">
                 {reasoning?.indirect_injection_detected ? (
                   <span style={{ color: 'var(--status-danger-text)', fontWeight: 600 }}>
-                    Adversarial prompt injection detected in retrieved text. Action blocked; abstention enforced.
+                    Adversarial prompt injection detected in retrieved text. Warning: This message tried to bypass normal checks. A person must review this carefully before taking any action.
                   </span>
                 ) : reasoning ? (
                   <span style={{ color: 'var(--status-success-text)' }}>
-                    Security scan clean. No prompt injection or system override tokens detected.
+                    Safety check passed. No deceptive instructions or attempt to bypass rules detected.
                   </span>
                 ) : (
-                  'Scans context for jailbreaks, system command overrides, or credential exfiltration.'
+                  'Scans for deceptive messages or attempts to trick the system into breaking policy.'
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Detailed Rationale Box */}
-        {reasoning?.rationale && (
+        {/* Root Cause & Recommendation Summary Card */}
+        {reasoning?.root_cause && (
           <div
             style={{
               backgroundColor: 'var(--bg-surface-elevated)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-md)',
-              padding: '0.85rem',
+              padding: '0.85rem 1rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.4rem',
+              gap: '0.5rem',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Synthesized Rationale
-              </span>
-              {typeof reasoning.confidence_score === 'number' && (
-                <span className="badge badge-success" style={{ fontFamily: 'var(--font-mono)' }}>
-                  Confidence: {Math.round(reasoning.confidence_score * 100)}%
-                </span>
-              )}
+            <div>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
+                What we think is going on
+              </div>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                {reasoning.root_cause}
+              </div>
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-              {reasoning.rationale}
-            </div>
+
+            {reasoning.rationale && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.45, borderTop: '1px solid var(--border-subtle)', paddingTop: '0.4rem' }}>
+                <strong style={{ color: 'var(--text-muted)' }}>Explanation: </strong>
+                {reasoning.rationale}
+              </div>
+            )}
           </div>
         )}
 
@@ -285,7 +314,7 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
         />
       </div>
 
-      {/* 3. Human Governance & Execution Column */}
+      {/* 3. Review & Decide Column */}
       {workflow ? (
         <ApprovalGate
           workflow={workflow}
@@ -296,12 +325,12 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
         <div className="console-panel">
           <div className="panel-header">
             <div className="panel-title">
-              <ShieldIcon size={16} /> Human Governance & Approval Gate
+              <ShieldIcon size={16} /> Review &amp; Decide
             </div>
-            <span className="badge badge-neutral">IDLE</span>
+            <span className="badge badge-neutral">Ready for next case</span>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '2rem 0', textAlign: 'center' }}>
-            Submit an investigation on the left to initiate evidence-grounded action gating.
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2.5rem 1rem', textAlign: 'center', lineHeight: 1.5 }}>
+            Type what the customer said on the left to see what we find and review recommended actions.
           </div>
         </div>
       )}

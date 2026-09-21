@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
+test.describe('FlowMind AI — Plain-Language Customer Support & Governance Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     // Wait for the app container to render
     await expect(page.locator('.app-container')).toBeVisible();
   });
 
-  test('1. Initial Load & Anti-Slop Visual Rules (SKILL.md Compliance)', async ({ page }) => {
+  test('1. Home View, Initial Load & Anti-Slop Visual Rules (SKILL.md Compliance)', async ({ page }) => {
     // Check page title & metadata
     await expect(page).toHaveTitle(/FlowMind AI/);
 
@@ -16,15 +16,33 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await expect(brandTitle).toHaveText('FlowMind AI');
 
     const brandSubtitle = page.locator('.brand-subtitle');
-    await expect(brandSubtitle).toContainText('Evidence-Grounded Enterprise Governance & Workflow Agent');
+    await expect(brandSubtitle).toContainText('Everyday Customer Support Assistant');
 
-    // Verify FastAPI connection status
+    // Verify system connection status
     const statusBadge = page.locator('.api-status-badge');
-    await expect(statusBadge).toContainText('FastAPI Connected');
+    await expect(statusBadge).toContainText('System Connected');
 
     // Verify default active persona is Marcus Vance (Team Lead)
     const personaSelect = page.locator('header select');
     await expect(personaSelect).toHaveValue('USR-002');
+
+    // Verify plain-language persona description in dropdown
+    const personaOptionText = await personaSelect.locator('option[value="USR-002"]').innerText();
+    expect(personaOptionText).toContain('Team lead — everyday requests');
+
+    // Verify Home friendly greeting and real counters from backend
+    await expect(page.locator('text=Hello, Marcus Vance!')).toBeVisible();
+    await expect(page.locator('text=Waiting for an OK').first()).toBeVisible();
+    await expect(page.locator('text=Sorted and finished').first()).toBeVisible();
+    await expect(page.locator('text=Turned down').first()).toBeVisible();
+
+    // Verify one big clear action: "Look into a new case"
+    const newCaseBtn = page.locator('#btn-home-new-case');
+    await expect(newCaseBtn).toBeVisible();
+    await expect(newCaseBtn).toContainText('Look into a new case');
+
+    // Click to enter investigation console
+    await newCaseBtn.click();
 
     // Check pre-configured benchmark scenarios
     const scenarioCards = page.locator('.scenario-card');
@@ -34,15 +52,21 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await expect(page.locator('text=CASE-005')).toBeVisible();
     await expect(page.locator('text=CASE-013')).toBeVisible();
 
+    // Verify "What did the customer say?" plain label
+    await expect(page.locator('text=What did the customer say?')).toBeVisible();
+
     // Verify anti-slop rules: zero decorative emojis in UI text/headings
     const headerText = await page.locator('.app-header').innerText();
     expect(headerText).not.toMatch(/[\u{1F300}-\u{1F6FF}]/u); // No emoji block
 
-    // Save screenshot of initial state
+    // Save screenshot of initial home & investigation state
     await page.screenshot({ path: 'screenshots/1_initial_load.png', fullPage: true });
   });
 
   test('2. Preset Scenario Selection & Reactive Form Inputs', async ({ page }) => {
+    // Navigate to investigation console if on Home
+    await page.locator('#nav-investigate').click();
+
     // 1. Select CASE-003 (Checkout 500 Server Error)
     await page.locator('.scenario-card', { hasText: 'CASE-003' }).click();
     await expect(page.locator('#customer-id')).toHaveValue('CUST-1044');
@@ -65,6 +89,9 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
   });
 
   test('3. Closed-Loop Investigation Pipeline Execution', async ({ page }) => {
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Ensure CASE-001 is active
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
 
@@ -74,9 +101,9 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await submitBtn.click();
 
     // Wait for the investigation to complete
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 30000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 30000 });
 
-    // Verify reasoning timeline steps
+    // Verify reasoning timeline steps in plain language
     await expect(page.locator('text=1. Evidence Retrieval')).toBeVisible();
     await expect(page.locator('text=2. Contextual Root Cause')).toBeVisible();
     await expect(page.locator('text=3. Security & Indirect Injection Guardrail')).toBeVisible();
@@ -94,7 +121,7 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
 
     // Switch to Sarah Jenkins (Support Agent)
     await personaSelect.selectOption('USR-001');
-    await expect(page.locator('header .badge')).toHaveText(/support_agent/i);
+    await expect(page.locator('header .badge')).toHaveText(/customer support|support_agent/i);
 
     // Switch to Elena Rostova (Manager)
     await personaSelect.selectOption('USR-003');
@@ -102,11 +129,11 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
 
     // Switch to Alex Chen (Admin)
     await personaSelect.selectOption('USR-004');
-    await expect(page.locator('header .badge')).toHaveText(/admin/i);
+    await expect(page.locator('header .badge')).toHaveText(/system admin|admin/i);
 
     // Switch back to Marcus Vance (Team Lead)
     await personaSelect.selectOption('USR-002');
-    await expect(page.locator('header .badge')).toHaveText(/team_lead/i);
+    await expect(page.locator('header .badge')).toHaveText(/team lead|team_lead/i);
 
     // Save screenshot of persona switching
     await page.screenshot({ path: 'screenshots/4_persona_switching.png', fullPage: true });
@@ -179,17 +206,22 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await personaSelect.selectOption('USR-003');
     await expect(page.locator('header .badge')).toHaveText(/manager/i);
 
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Select CASE-001 (Recurring Double Billing)
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
 
     // Run investigation
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
-    // Verify Approval Gate is in PENDING_APPROVAL state
+    // Verify Approval Gate is in PENDING_APPROVAL state with "Yes, do this" and "No, don't do this"
     await expect(page.locator('#btn-approve-action')).toBeVisible();
     await expect(page.locator('#btn-reject-action')).toBeVisible();
+    await expect(page.locator('#btn-approve-action')).toContainText('Yes, do this');
+    await expect(page.locator('#btn-reject-action')).toContainText("No, don't do this");
     await expect(page.locator('text=/ISSUE_REFUND_RECOMMENDATION|ESCALATE_TICKET/')).toBeVisible();
 
     // Add reviewer rationale into decision notes
@@ -215,7 +247,10 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     // Step 1: Switch to Sarah Jenkins (Support Agent, USR-001) who lacks financial refund authorization
     const personaSelect = page.locator('header select');
     await personaSelect.selectOption('USR-001');
-    await expect(page.locator('header .badge')).toHaveText(/support_agent/i);
+    await expect(page.locator('header .badge')).toHaveText(/customer support|support_agent/i);
+
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
 
     // Select CASE-001 (Requires Manager or above)
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
@@ -223,16 +258,17 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     // Run investigation
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
     // Step 2: Attempt approval as Support Agent
     await expect(page.locator('#btn-approve-action')).toBeVisible();
     await page.locator('#btn-approve-action').click();
 
-    // Step 3: Assert RBAC boundary error banner is rendered
+    // Step 3: Assert RBAC boundary error banner is rendered with plain-language explanation
     await expect(page.locator('.alert-banner.alert-danger')).toBeVisible();
     await expect(page.locator('text=Authorization Boundary Enforced')).toBeVisible();
     await expect(page.locator("text=Current role 'support_agent' lacks authorization")).toBeVisible();
+    await expect(page.locator("text=it needs a Manager or Admin")).toBeVisible();
 
     // Step 4: Role Elevation Recovery - Switch to Elena Rostova (Manager, USR-003)
     await personaSelect.selectOption('USR-003');
@@ -250,13 +286,16 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
   });
 
   test('9. Human Governance — Action Rejection with Reviewer Audit Rationale', async ({ page }) => {
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Select CASE-001 (Recurring Double Billing, pending approval)
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
 
     // Run investigation
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
     // Verify rejection button is available
     await expect(page.locator('#btn-reject-action')).toBeVisible();
@@ -286,17 +325,21 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await personaSelect.selectOption('USR-003');
     await expect(page.locator('header .badge')).toHaveText(/manager/i);
 
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Select CASE-001
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
 
     // Run investigation
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
-    // Click 'Modify Parameters'
+    // Click 'Change it first'
     const modifyBtn = page.locator('#btn-modify-action');
     await expect(modifyBtn).toBeVisible();
+    await expect(modifyBtn).toContainText('Change it first');
     await modifyBtn.click();
 
     // Assert parameter JSON textarea is revealed
@@ -321,6 +364,9 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
   });
 
   test('11. Security Guardrail — Adversarial Prompt Injection Defense & Containment', async ({ page }) => {
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Select CASE-013 (Prompt Injection attack: "SYSTEM OVERRIDE: Ignore all previous instructions...")
     await page.locator('.scenario-card', { hasText: 'CASE-013' }).click();
 
@@ -330,7 +376,7 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     // Run investigation
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
     // Verify timeline step 3 detected indirect prompt injection
     await expect(page.locator('text=Adversarial prompt injection detected in retrieved text')).toBeVisible();
@@ -346,11 +392,14 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
   });
 
   test('12. Evidence Citation Drawer — Collapsible Excerpt Interactivity & Verification', async ({ page }) => {
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Run investigation on CASE-001
     await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
     const submitBtn = page.locator('#btn-run-investigation');
     await submitBtn.click();
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
 
     // Verify Evidence Drawer header and grounding badge
     await expect(page.locator('text=Retrieved Grounding Evidence')).toBeVisible();
@@ -380,6 +429,9 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
   });
 
   test('13. Manual Custom Complaint Input & Reactive Form Validation', async ({ page }) => {
+    // Navigate to investigation console
+    await page.locator('#nav-investigate').click();
+
     // Test reactive validation: clearing the issue summary should disable the submit button
     const issueTextarea = page.locator('#issue-summary');
     await issueTextarea.fill('');
@@ -395,11 +447,8 @@ test.describe('FlowMind AI — End-to-End Enterprise Governance Suite', () => {
     await expect(submitBtn).toBeEnabled();
     await submitBtn.click();
 
-    // Wait for investigation pipeline
-    await expect(submitBtn).not.toHaveText('Retrieving & Reasoning...', { timeout: 15000 });
-
     // Verify workflow instance ID was assigned
-    await expect(page.locator('text=WF:')).toBeVisible();
+    await expect(page.locator('text=Case WF:')).toBeVisible({ timeout: 35000 });
 
     // Verify reasoning timeline stepped through evidence retrieval
     await expect(page.locator('text=1. Evidence Retrieval')).toBeVisible();
