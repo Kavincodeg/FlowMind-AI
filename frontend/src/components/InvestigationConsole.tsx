@@ -4,7 +4,8 @@ import type { DemonstrationScenario, Persona, WorkflowInstance } from '../types'
 import { api } from '../api';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import { ApprovalGate } from './ApprovalGate';
-import { SearchIcon, ShieldIcon, AlertTriangleIcon, RefreshIcon, HashIcon } from './Icons';
+import { SearchIcon, ShieldIcon, AlertTriangleIcon, HashIcon } from './Icons';
+import { LoadingState } from './ui';
 
 interface InvestigationConsoleProps {
   scenarios: DemonstrationScenario[];
@@ -112,11 +113,8 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
 
   if (isFetchingDetail) {
     return (
-      <div className="console-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', maxWidth: '800px', margin: '2rem auto' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-          <RefreshIcon size={18} />
-          <span>Fetching case {routeWorkflowId} directly from FlowMind AI API...</span>
-        </div>
+      <div className="console-panel" style={{ padding: 'var(--space-8)', textAlign: 'center', maxWidth: '800px', margin: 'var(--space-8) auto' }}>
+        <LoadingState message={`Fetching case ${routeWorkflowId} directly from FlowMind AI API...`} />
       </div>
     );
   }
@@ -132,8 +130,8 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
           {routeWorkflowId && (
             <Link
               to="/investigate"
-              className="btn btn-secondary"
-              style={{ fontSize: '0.725rem', padding: '0.25rem 0.5rem', textDecoration: 'none' }}
+              className="btn btn-secondary btn-sm"
+              style={{ textDecoration: 'none' }}
               title="Start a new blank investigation"
             >
               + New Case

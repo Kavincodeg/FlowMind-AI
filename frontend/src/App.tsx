@@ -12,6 +12,7 @@ import { BenchmarkDashboard } from './components/BenchmarkDashboard';
 import { KnowledgeBaseView } from './components/KnowledgeBaseView';
 import { GovernanceMatrixView } from './components/GovernanceMatrixView';
 import { PersonaPickerView } from './components/PersonaPickerView';
+import { LoadingState } from './components/ui';
 import {
   ShieldIcon,
   LayersIcon,
@@ -118,8 +119,8 @@ const AppLayout: React.FC = () => {
       {/* Main View Area with Real Routes */}
       <main className="app-main">
         {isLoadingInitial && !activePersona ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '3rem 0', textAlign: 'center' }}>
-            Connecting to customer support system...
+          <div className="console-panel" style={{ maxWidth: '600px', margin: 'var(--space-8) auto' }}>
+            <LoadingState message="Connecting to customer support system..." />
           </div>
         ) : (
           <Routes>
@@ -302,7 +303,7 @@ const AppLayout: React.FC = () => {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <span>110 Unit Tests Passing</span>
           <span>9 Integration Tests Passing</span>
-          <span>17 Playwright Tests</span>
+          <span>19 Playwright Tests Passing</span>
           <span>SHA-256 Hash Chain Active</span>
           <span>Server-Side RBAC Enforced</span>
         </div>

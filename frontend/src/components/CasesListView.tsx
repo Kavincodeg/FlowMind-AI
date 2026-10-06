@@ -4,6 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { api } from '../api';
 import { getPlainStatusLabel } from './HomeView';
 import { SearchIcon, RefreshIcon, AlertTriangleIcon, HashIcon, LayersIcon } from './Icons';
+import { Button, LoadingState, EmptyState } from './ui';
 import type { AuditListItem } from '../types';
 
 export const CasesListView: React.FC = () => {
@@ -55,47 +56,49 @@ export const CasesListView: React.FC = () => {
   });
 
   return (
-    <div style={{ maxWidth: '1050px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="page-container" style={{ maxWidth: '1050px' }}>
       {/* Header bar */}
       <div
         className="console-panel"
         style={{
-          padding: '1.5rem',
+          padding: 'var(--space-6)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1rem',
+          gap: 'var(--space-4)',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <LayersIcon size={20} />
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+            <h1 className="page-title" style={{ margin: 0 }}>
               Past Customer Cases &amp; History
             </h1>
           </div>
-          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <p className="page-subtitle" style={{ margin: 'var(--space-1) 0 0 0' }}>
             Complete ledger of past and active investigations. Click any case to inspect its evidence, decision, or cryptographic proof.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <button
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <Button
             type="button"
-            className="btn btn-secondary"
+            variant="secondary"
+            size="sm"
             onClick={fetchCases}
             disabled={isLoading}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+            icon={<RefreshIcon size={14} />}
           >
-            <RefreshIcon size={14} /> Refresh
-          </button>
+            Refresh
+          </Button>
           <Link
             to="/investigate"
-            className="btn btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', textDecoration: 'none' }}
+            className="btn btn-primary btn-sm"
+            style={{ textDecoration: 'none' }}
           >
-            <SearchIcon size={14} /> + New Case
+            <span className="btn-icon"><SearchIcon size={14} /></span>
+            <span>+ New Case</span>
           </Link>
         </div>
       </div>
@@ -107,10 +110,10 @@ export const CasesListView: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '0.75rem',
+          gap: 'var(--space-3)',
         }}
       >
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           {[
             { id: 'ALL', label: `All (${cases.length})` },
             { id: 'PENDING', label: `Waiting for OK (${cases.filter((c) => c.terminal_state === 'PENDING_APPROVAL').length})` },
@@ -121,8 +124,7 @@ export const CasesListView: React.FC = () => {
             <button
               key={tab.id}
               type="button"
-              className={`btn ${filter === tab.id ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+              className={`btn btn-sm ${filter === tab.id ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setFilter(tab.id)}
             >
               {tab.label}
@@ -133,7 +135,7 @@ export const CasesListView: React.FC = () => {
         <input
           type="text"
           className="form-input"
-          style={{ maxWidth: '260px', padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
+          style={{ maxWidth: '260px', padding: 'var(--space-1) var(--space-3)', fontSize: 'var(--text-xs)' }}
           placeholder="Filter by Case WF- ID..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -148,20 +150,21 @@ export const CasesListView: React.FC = () => {
       )}
 
       {/* Cases list */}
-      <div className="console-panel" style={{ padding: '0.5rem' }}>
+      <div className="console-panel" style={{ padding: 'var(--space-2)' }}>
         {isLoading ? (
-          <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            Loading customer cases...
-          </div>
+          <LoadingState message="Loading customer cases..." />
         ) : filteredCases.length === 0 ? (
-          <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>No customer cases found matching the current filter.</p>
-            <Link to="/investigate" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-block', textDecoration: 'none' }}>
-              Look into your first case
-            </Link>
-          </div>
+          <EmptyState
+            title="No customer cases found"
+            description="No customer cases matched your current filter criteria."
+            action={
+              <Link to="/investigate" className="btn btn-primary" style={{ textDecoration: 'none' }}>
+                Look into your first case
+              </Link>
+            }
+          />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-2)' }}>
             {filteredCases.map((c) => {
               const statusInfo = getPlainStatusLabel(c.terminal_state);
               return (
@@ -171,50 +174,50 @@ export const CasesListView: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '0.9rem 1.1rem',
+                    padding: 'var(--space-3) var(--space-4)',
                     backgroundColor: 'var(--bg-surface-elevated)',
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-default)',
                     flexWrap: 'wrap',
-                    gap: '0.75rem',
+                    gap: 'var(--space-3)',
                   }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <Link
                         to={`/investigate/${c.workflow_id}`}
-                        style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--text-primary)', textDecoration: 'none' }}
+                        style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text-primary)', textDecoration: 'none' }}
                       >
                         Case {c.workflow_id}
                       </Link>
-                      <span className={`badge ${statusInfo.badgeClass}`} style={{ fontSize: '0.7rem' }}>
+                      <span className={`badge ${statusInfo.badgeClass}`}>
                         {statusInfo.label}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                       Started {new Date(c.started_at).toLocaleString()} &bull; Audit ID: {c.audit_id}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <Link
                       to={`/cases/${c.workflow_id}`}
-                      className="btn btn-secondary"
-                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', textDecoration: 'none' }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ textDecoration: 'none' }}
                     >
                       Status / Timeline
                     </Link>
                     <Link
                       to={`/investigate/${c.workflow_id}`}
-                      className="btn btn-secondary"
-                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', textDecoration: 'none' }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ textDecoration: 'none' }}
                     >
                       Investigation
                     </Link>
                     <Link
                       to={`/trust/${c.workflow_id}`}
-                      className="btn btn-secondary"
-                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
                     >
                       <HashIcon size={12} /> Audit Record
                     </Link>

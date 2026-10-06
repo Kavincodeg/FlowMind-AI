@@ -4,6 +4,7 @@ import type { AuditListItem, AuditTrail, ChainVerificationResult, Persona } from
 import { api } from '../api';
 import { CheckCircleIcon, RefreshIcon, LayersIcon, ShieldIcon, AlertTriangleIcon } from './Icons';
 import { getPlainStatusLabel } from './HomeView';
+import { LoadingState } from './ui';
 
 interface AuditExplorerProps {
   currentWorkflowId?: string | null;
@@ -223,9 +224,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
         </div>
 
         {isLoadingDetail ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2rem 0', textAlign: 'center' }}>
-            Checking tamper-evident seals for this case...
-          </div>
+          <LoadingState message="Checking tamper-evident seals for this case..." />
         ) : auditDetail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Plain Summary Metric Cards */}
@@ -278,7 +277,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                       key={evt.event_id || idx}
                       style={{
                         backgroundColor: 'var(--bg-surface-elevated)',
-                        border: isFailed ? '1px solid var(--border-danger)' : '1px solid var(--border-default)',
+                        border: isFailed ? '1px solid var(--status-danger-border)' : '1px solid var(--border-default)',
                         borderRadius: 'var(--radius-md)',
                         padding: '0.85rem 1rem',
                       }}

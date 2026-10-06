@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { api } from '../api';
 import { getPlainStatusLabel } from './HomeView';
-import { HashIcon, RefreshIcon, AlertTriangleIcon, ArrowRightIcon, ClockIcon } from './Icons';
+import { HashIcon, AlertTriangleIcon, ArrowRightIcon, ClockIcon } from './Icons';
 import { ExecutionOutcome } from './ExecutionOutcome';
+import { LoadingState } from './ui';
 import type { WorkflowInstance } from '../types';
 
 export const CaseDetailView: React.FC = () => {
@@ -42,10 +43,9 @@ export const CaseDetailView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="console-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', maxWidth: '850px', margin: '2rem auto' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-          <RefreshIcon size={18} />
-          <span>Loading case timeline for {workflowId}...</span>
+      <div className="page-container" style={{ maxWidth: '850px' }}>
+        <div className="console-panel">
+          <LoadingState message={`Loading case timeline for ${workflowId}...`} />
         </div>
       </div>
     );
@@ -53,18 +53,20 @@ export const CaseDetailView: React.FC = () => {
 
   if (error || !workflow) {
     return (
-      <div className="console-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '2rem auto' }}>
-        <div className="alert-banner alert-danger">
-          <AlertTriangleIcon size={16} />
-          <span>{error || `Case ${workflowId} could not be found.`}</span>
-        </div>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-          <Link to="/cases" className="btn btn-secondary">
-            &larr; Back to Past Cases
-          </Link>
-          <Link to="/investigate" className="btn btn-primary">
-            Look into a new case
-          </Link>
+      <div className="page-container" style={{ maxWidth: '800px' }}>
+        <div className="console-panel" style={{ padding: 'var(--space-6)' }}>
+          <div className="alert-banner alert-danger">
+            <AlertTriangleIcon size={16} />
+            <span>{error || `Case ${workflowId} could not be found.`}</span>
+          </div>
+          <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)' }}>
+            <Link to="/cases" className="btn btn-secondary">
+              &larr; Back to Past Cases
+            </Link>
+            <Link to="/investigate" className="btn btn-primary">
+              Look into a new case
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -74,10 +76,10 @@ export const CaseDetailView: React.FC = () => {
   const reasoning = workflow.reasoning;
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="page-container" style={{ maxWidth: '960px' }}>
       {/* Breadcrumb navigation */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
           <Link to="/home" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
             Home
           </Link>
@@ -89,18 +91,18 @@ export const CaseDetailView: React.FC = () => {
           <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Case {workflow.workflow_id}</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <Link
             to={`/investigate/${workflow.workflow_id}`}
-            className="btn btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', textDecoration: 'none' }}
+            className="btn btn-secondary btn-sm"
+            style={{ textDecoration: 'none' }}
           >
             Investigation Console
           </Link>
           <Link
             to={`/trust/${workflow.workflow_id}`}
-            className="btn btn-primary"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            className="btn btn-primary btn-sm"
+            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
           >
             <HashIcon size={14} /> View Cryptographic Audit Record
           </Link>

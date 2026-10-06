@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { api } from '../api';
 import { ApprovalGate } from './ApprovalGate';
-import { RefreshIcon, HashIcon, AlertTriangleIcon } from './Icons';
+import { HashIcon, AlertTriangleIcon } from './Icons';
+import { LoadingState } from './ui';
 import type { WorkflowInstance } from '../types';
 
 export const DecisionView: React.FC = () => {
@@ -45,18 +46,19 @@ export const DecisionView: React.FC = () => {
 
   if (!activePersona) {
     return (
-      <div className="console-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-        Please select a team persona to review cases.
+      <div className="page-container" style={{ maxWidth: '800px' }}>
+        <div className="console-panel" style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
+          Please select a team persona to review cases.
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="console-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', maxWidth: '800px', margin: '2rem auto' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-          <RefreshIcon size={18} />
-          <span>Loading case decision details for {workflowId}...</span>
+      <div className="page-container" style={{ maxWidth: '800px' }}>
+        <div className="console-panel">
+          <LoadingState message={`Loading case decision details for ${workflowId}...`} />
         </div>
       </div>
     );
@@ -64,25 +66,27 @@ export const DecisionView: React.FC = () => {
 
   if (error || !workflow) {
     return (
-      <div className="console-panel" style={{ padding: '2rem', maxWidth: '800px', margin: '2rem auto' }}>
-        <div className="alert-banner alert-danger">
-          <AlertTriangleIcon size={16} />
-          <span>{error || `Case ${workflowId} could not be found.`}</span>
-        </div>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-          <Link to="/home" className="btn btn-secondary">
-            Return to Home
-          </Link>
-          <Link to="/investigate" className="btn btn-primary">
-            Start a new case
-          </Link>
+      <div className="page-container" style={{ maxWidth: '800px' }}>
+        <div className="console-panel" style={{ padding: 'var(--space-6)' }}>
+          <div className="alert-banner alert-danger">
+            <AlertTriangleIcon size={16} />
+            <span>{error || `Case ${workflowId} could not be found.`}</span>
+          </div>
+          <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)' }}>
+            <Link to="/home" className="btn btn-secondary">
+              Return to Home
+            </Link>
+            <Link to="/investigate" className="btn btn-primary">
+              Start a new case
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="page-container" style={{ maxWidth: '960px' }}>
       {/* Top breadcrumb & navigation bar */}
       <div
         style={{
@@ -90,10 +94,10 @@ export const DecisionView: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '0.75rem',
+          gap: 'var(--space-3)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
           <Link to="/home" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
             Home
           </Link>

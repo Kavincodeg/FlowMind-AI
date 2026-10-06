@@ -4,6 +4,7 @@ import type { AuditListItem, Persona } from '../types';
 import { api } from '../api';
 import { SearchIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, XCircleIcon, ArrowRightIcon } from './Icons';
 import { getRoleCapabilitySummary } from './Header';
+import { Button, LoadingState, EmptyState } from './ui';
 
 interface HomeViewProps {
   activePersona: Persona;
@@ -91,25 +92,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const abstainedCount = cases.filter((c) => c.terminal_state === 'ABSTAINED').length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="page-container" style={{ maxWidth: '1000px' }}>
       {/* Friendly greeting hero */}
       <div
-        className="console-panel"
+        className="console-panel card-elevated"
         style={{
-          padding: '2rem',
-          background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-elevated) 100%)',
+          padding: 'var(--space-6) var(--space-8)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1.5rem',
+          gap: 'var(--space-4)',
         }}
       >
         <div style={{ maxWidth: '600px' }}>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: '0.4rem' }}>
+          <h1 className="page-title" style={{ marginBottom: 'var(--space-1)' }}>
             Hello, {activePersona.name}!
           </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          <p className="page-subtitle" style={{ lineHeight: 1.5 }}>
             {getRoleCapabilitySummary(activePersona.role)}. Here is an overview of what needs attention across customer cases today.
           </p>
         </div>
@@ -119,7 +119,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             type="button"
             id="btn-home-new-case"
             className="btn btn-primary"
-            style={{ padding: '0.75rem 1.4rem', fontSize: '0.95rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '0.75rem 1.4rem', fontSize: 'var(--text-sm)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
             onClick={handleNewCase}
           >
             <SearchIcon size={16} /> Look into a new case
@@ -128,51 +128,51 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* Real counters from backend */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <div className="console-panel" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-warning-text)', fontSize: '0.8rem', fontWeight: 600 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-4)' }}>
+        <div className="console-panel" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--status-warning-text)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
             <ClockIcon size={16} /> Waiting for an OK
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>
             {waitingCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
             {waitingCount === 1 ? '1 case needs review' : `${waitingCount} cases need review`}
           </div>
         </div>
 
-        <div className="console-panel" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-success-text)', fontSize: '0.8rem', fontWeight: 600 }}>
+        <div className="console-panel" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--status-success-text)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
             <CheckCircleIcon size={16} /> Sorted and finished
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>
             {sortedCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
             Fully checked and handled
           </div>
         </div>
 
-        <div className="console-panel" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-danger-text)', fontSize: '0.8rem', fontWeight: 600 }}>
+        <div className="console-panel" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--status-danger-text)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
             <XCircleIcon size={16} /> Turned down
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>
             {rejectedCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
             Decided against by a reviewer
           </div>
         </div>
 
-        <div className="console-panel" style={{ padding: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>
+        <div className="console-panel" style={{ padding: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--text-muted)', fontSize: 'var(--text-xs)', fontWeight: 600 }}>
             <AlertTriangleIcon size={16} /> No guess made
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
+          <div style={{ fontSize: 'var(--text-3xl)', fontWeight: 700, color: 'var(--text-primary)', marginTop: 'var(--space-2)' }}>
             {abstainedCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
             Safely stepped aside for human review
           </div>
         </div>
@@ -180,29 +180,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       {/* Real cases list */}
       <div className="console-panel">
-        <div className="panel-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div className="panel-header" style={{ flexWrap: 'wrap', gap: 'var(--space-2)' }}>
           <div>
             <div className="panel-title">Recent Customer Cases</div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
               Cases recorded in the system. Click any case to see its full story and details.
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <Link
               to="/cases"
-              className="btn btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', textDecoration: 'none' }}
+              className="btn btn-secondary btn-sm"
+              style={{ textDecoration: 'none' }}
             >
               View all cases
             </Link>
-            <button
+            <Button
               type="button"
-              className="btn btn-primary"
-              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+              variant="primary"
+              size="sm"
               onClick={handleNewCase}
             >
               + New Case
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -214,23 +214,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
 
         {isLoading ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2rem 0', textAlign: 'center' }}>
-            Loading your customer cases...
-          </div>
+          <LoadingState message="Loading your customer cases..." />
         ) : cases.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '2.5rem 0', textAlign: 'center' }}>
-            <p>No customer cases recorded yet.</p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              style={{ marginTop: '0.75rem' }}
-              onClick={handleNewCase}
-            >
-              Look into your first case
-            </button>
-          </div>
+          <EmptyState
+            title="No customer cases recorded yet"
+            description="Start by investigating a customer message or selecting an existing test scenario."
+            action={
+              <Button type="button" variant="primary" onClick={handleNewCase}>
+                Look into your first case
+              </Button>
+            }
+          />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {cases.map((c) => {
               const statusInfo = getPlainStatusLabel(c.terminal_state);
               return (
@@ -240,7 +236,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '0.85rem 1rem',
+                    padding: 'var(--space-3) var(--space-4)',
                     backgroundColor: 'var(--bg-surface-elevated)',
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-default)',
@@ -254,21 +250,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     if (e.key === 'Enter') handleCaseClick(c.workflow_id);
                   }}
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
                         Case {c.workflow_id}
                       </span>
-                      <span className={`badge ${statusInfo.badgeClass}`} style={{ fontSize: '0.675rem' }}>
+                      <span className={`badge ${statusInfo.badgeClass}`}>
                         {statusInfo.label}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                       Started {new Date(c.started_at).toLocaleString()}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', fontSize: '0.8rem', fontWeight: 500 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--accent-primary)', fontSize: 'var(--text-xs)', fontWeight: 500 }}>
                     <span>View details</span>
                     <ArrowRightIcon size={14} />
                   </div>

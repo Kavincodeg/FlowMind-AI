@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Persona, UserRole } from '../types';
 import { ShieldIcon, UserIcon } from './Icons';
+import { Badge } from './ui';
 
 interface HeaderProps {
   personas: Persona[];
@@ -64,15 +65,15 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {activePersona && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', color: 'var(--text-muted)' }}>
               <UserIcon size={14} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>Signed in as:</span>
+              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500 }}>Signed in as:</span>
             </div>
 
             <select
               className="form-select"
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', fontWeight: 500, maxWidth: '420px' }}
+              style={{ padding: 'var(--space-1) var(--space-3)', fontSize: 'var(--text-xs)', fontWeight: 500, maxWidth: '420px' }}
               value={activePersona.user_id}
               onChange={(e) => {
                 const found = personas.find((p) => p.user_id === e.target.value);
@@ -87,19 +88,19 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </select>
 
-            <span
-              className={`badge ${
+            <Badge
+              variant={
                 activePersona.role === 'admin'
-                  ? 'badge-danger'
+                  ? 'danger'
                   : activePersona.role === 'manager' || activePersona.role === 'team_lead'
-                  ? 'badge-warning'
-                  : 'badge-neutral'
-              }`}
+                  ? 'warning'
+                  : 'neutral'
+              }
               style={{ letterSpacing: '0.02em', whiteSpace: 'nowrap' }}
               title={getRoleCapabilitySummary(activePersona.role)}
             >
               {getRolePlainTitle(activePersona.role)} ({activePersona.role})
-            </span>
+            </Badge>
           </div>
         )}
       </div>
