@@ -105,7 +105,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
 
         {auditList.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', padding: '1.5rem 0', textAlign: 'center' }}>
-            No past cases recorded yet. Run a case to see its full tamper-proof record here.
+            No past cases recorded yet. Run a case to see its full tamper-evident record here.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', maxHeight: '580px', overflowY: 'auto' }}>
@@ -178,7 +178,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
             <AlertTriangleIcon size={14} /> Being honest about the limits
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem', lineHeight: 1.45 }}>
-            Tamper-proof logs prove that nobody altered, deleted, or inserted a record after it was written. They do not guarantee that the original information entered by a person or external system was 100% correct in the first place. Human accountability and review remain essential.
+            Tamper-evident logs show that nobody altered, deleted, or inserted a record after it was written. They do not guarantee that the original information entered by a person or external system was 100% correct in the first place. Human accountability and review remain essential.
           </div>
         </div>
 

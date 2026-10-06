@@ -211,7 +211,7 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
 
                   <tr>
                     <td>
-                      <strong>Tamper-Proof Audit Completeness</strong>
+                      <strong>Tamper-Evident Audit Completeness</strong>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         Permanent cryptographic record
                       </div>

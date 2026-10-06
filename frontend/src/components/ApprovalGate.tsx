@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import type { WorkflowInstance, Persona } from '../types';
 import { api, ApiError } from '../api';
 import { ExecutionOutcome } from './ExecutionOutcome';
@@ -59,7 +59,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
           requires_approval: true,
         };
       } catch {
-        setRbacError('Please check the parameters format — it must be valid JSON text.');
+        setRbacError('Please check the parameters format â€” it must be valid JSON text.');
         setIsSubmitting(false);
         return;
       }
@@ -82,8 +82,11 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         const roleTitle = getRolePlainTitle(activePersona.role);
+        // Use the real, case-specific denial reason from the backend 403 response (detail.message).
+        // err.message is pre-extracted from detail.message in api.ts, e.g. 'Requires Team Lead or above'.
+        const backendReason = err.message;
         setRbacError(
-          `As a ${roleTitle} (${activePersona.role}), you can't say yes to this one — it needs a Manager or Admin. Current role '${activePersona.role}' lacks authorization for this action.`
+          `As a ${roleTitle}, you can't say yes to this one — ${backendReason}`
         );
       } else if (err instanceof Error) {
         setRbacError(err.message);
@@ -282,7 +285,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
             <div className="alert-banner alert-danger">
               <XCircleIcon size={16} />
               <div>
-                <strong>Action Turned Down — Action Rejected by Human Governance</strong>
+                <strong>Action Turned Down â€” Action Rejected by Human Governance</strong>
                 <div style={{ marginTop: '0.25rem', fontSize: '0.825rem' }}>
                   {workflow.approval_record?.rejection_reason ||
                     workflow.approval_record?.comments ||
