@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AuditListItem, AuditTrail, ChainVerificationResult, Persona } from '../types';
 import { api } from '../api';
 import { CheckCircleIcon, RefreshIcon, LayersIcon, ShieldIcon, AlertTriangleIcon } from './Icons';
 import { getPlainStatusLabel } from './HomeView';
 
 interface AuditExplorerProps {
-  currentWorkflowId: string | null;
+  currentWorkflowId?: string | null;
   activePersona: Persona;
 }
 
@@ -13,13 +14,25 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
   currentWorkflowId,
   activePersona,
 }) => {
+  const { workflowId: routeWorkflowId } = useParams<{ workflowId?: string }>();
+  const navigate = useNavigate();
+
   const [auditList, setAuditList] = useState<AuditListItem[]>([]);
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(currentWorkflowId);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(
+    routeWorkflowId || currentWorkflowId || null
+  );
   const [auditDetail, setAuditDetail] = useState<AuditTrail | null>(null);
   const [chainVerification, setChainVerification] = useState<ChainVerificationResult | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync selectedWorkflowId when route parameter changes
+  useEffect(() => {
+    if (routeWorkflowId && routeWorkflowId !== selectedWorkflowId) {
+      setSelectedWorkflowId(routeWorkflowId);
+    }
+  }, [routeWorkflowId]);
 
   const fetchAudits = async () => {
     setIsLoadingList(true);
@@ -28,7 +41,8 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
       const items = await api.listAudits(activePersona.token);
       setAuditList(items);
       if (!selectedWorkflowId && items.length > 0) {
-        setSelectedWorkflowId(items[0].workflow_id);
+        const firstId = routeWorkflowId || currentWorkflowId || items[0].workflow_id;
+        setSelectedWorkflowId(firstId);
       }
     } catch (err) {
       if (err instanceof Error) {
@@ -69,6 +83,11 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
       fetchAuditDetail(selectedWorkflowId);
     }
   }, [selectedWorkflowId]);
+
+  const handleSelectCase = (wfId: string) => {
+    setSelectedWorkflowId(wfId);
+    navigate(`/trust/${wfId}`);
+  };
 
   const chainValid = chainVerification?.valid ?? null;
   const failedAtIndex = chainVerification?.failed_at_index ?? null;
@@ -117,7 +136,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                   key={item.audit_id}
                   type="button"
                   className={`scenario-card ${isSelected ? 'active' : ''}`}
-                  onClick={() => setSelectedWorkflowId(item.workflow_id)}
+                  onClick={() => handleSelectCase(item.workflow_id)}
                 >
                   <div className="scenario-card-header">
                     <span className="scenario-title" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -150,17 +169,38 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
             </span>
           </div>
 
-          {chainValid !== null && (
-            <span
-              className={`badge ${chainValid ? 'badge-success' : 'badge-danger'}`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
-            >
-              <CheckCircleIcon size={14} />
-              {chainValid
-                ? `Checked just now — nothing has been altered (Cryptographic Chain Verified (Intact) — ${chainVerification?.chain_length ?? 0} blocks)`
-                : `Tampering detected at block #${(failedAtIndex ?? 0) + 1} (${chainVerification?.failed_event_id ?? 'unknown'})`}
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {selectedWorkflowId && (
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <Link
+                  to={`/cases/${selectedWorkflowId}`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.725rem', padding: '0.25rem 0.5rem', textDecoration: 'none' }}
+                >
+                  Timeline
+                </Link>
+                <Link
+                  to={`/investigate/${selectedWorkflowId}`}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.725rem', padding: '0.25rem 0.5rem', textDecoration: 'none' }}
+                >
+                  Investigation
+                </Link>
+              </div>
+            )}
+
+            {chainValid !== null && (
+              <span
+                className={`badge ${chainValid ? 'badge-success' : 'badge-danger'}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+              >
+                <CheckCircleIcon size={14} />
+                {chainValid
+                  ? `Checked just now — nothing has been altered (Cryptographic Chain Verified (Intact) — ${chainVerification?.chain_length ?? 0} blocks)`
+                  : `Tampering detected at block #${(failedAtIndex ?? 0) + 1} (${chainVerification?.failed_event_id ?? 'unknown'})`}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Honest Limits Disclosure Card */}
@@ -238,65 +278,51 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                       key={evt.event_id || idx}
                       style={{
                         backgroundColor: 'var(--bg-surface-elevated)',
-                        border: `1px solid ${isFailed ? 'var(--status-danger-text)' : 'var(--border-default)'}`,
+                        border: isFailed ? '1px solid var(--border-danger)' : '1px solid var(--border-default)',
                         borderRadius: 'var(--radius-md)',
                         padding: '0.85rem 1rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.45rem',
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span className="badge badge-neutral" style={{ fontFamily: 'var(--font-mono)' }}>
+                          <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>
                             BLOCK #{idx + 1}
                           </span>
-                          <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                            {evt.stage.replace(/_/g, ' ')}
-                          </strong>
-                          {isFailed && (
-                            <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
-                              INTEGRITY FAILURE
-                            </span>
-                          )}
+                          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                            {evt.stage}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                          Actor: {evt.actor} | {new Date(evt.timestamp).toLocaleTimeString()}
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {new Date(evt.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
 
-                      {/* Technical hash details */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.72rem', marginTop: '0.2rem' }}>
-                        <div>
-                          <span style={{ color: 'var(--text-muted)' }}>Current Hash: </span>
-                          <span className="hash-pill" style={{ color: isFailed ? 'var(--status-danger-text)' : 'var(--status-success-text)' }}>
-                            {evt.block_hash ? `${evt.block_hash.slice(0, 16)}...${evt.block_hash.slice(-8)}` : 'GENESIS'}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)', minWidth: '95px' }}>Current Hash:</span>
+                          <span className="hash-pill" style={{ color: isFailed ? 'var(--status-danger-text)' : 'var(--accent-primary)', wordBreak: 'break-all' }}>
+                            {evt.block_hash}
                           </span>
                         </div>
-                        <div>
-                          <span style={{ color: 'var(--text-muted)' }}>Parent Hash: </span>
-                          <span className="hash-pill">
-                            {evt.parent_hash && evt.parent_hash !== '0'.repeat(64)
-                              ? `${evt.parent_hash.slice(0, 16)}...${evt.parent_hash.slice(-8)}`
-                              : '0000000000000000 (GENESIS)'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)', minWidth: '95px' }}>Parent Hash:</span>
+                          <span className="hash-pill" style={{ wordBreak: 'break-all' }}>
+                            {evt.parent_hash}
                           </span>
                         </div>
                       </div>
 
                       {evt.details && Object.keys(evt.details).length > 0 && (
-                        <details style={{ marginTop: '0.2rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
-                            See full event details
+                        <details style={{ marginTop: '0.5rem', fontSize: '0.75rem' }}>
+                          <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            View Raw Block Payload
                           </summary>
                           <pre
                             style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: '0.7rem',
                               backgroundColor: 'var(--bg-app)',
-                              padding: '0.45rem',
+                              padding: '0.5rem',
                               borderRadius: 'var(--radius-sm)',
-                              color: 'var(--text-secondary)',
-                              maxHeight: '120px',
+                              maxHeight: '160px',
                               overflowY: 'auto',
                               marginTop: '0.25rem',
                             }}

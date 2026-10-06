@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import type { AuditListItem, Persona } from '../types';
 import { api } from '../api';
 import { SearchIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, XCircleIcon, ArrowRightIcon } from './Icons';
@@ -6,8 +7,8 @@ import { getRoleCapabilitySummary } from './Header';
 
 interface HomeViewProps {
   activePersona: Persona;
-  onNavigateToNewCase: () => void;
-  onSelectCase: (workflowId: string) => void;
+  onNavigateToNewCase?: () => void;
+  onSelectCase?: (workflowId: string) => void;
 }
 
 export const getPlainStatusLabel = (status: string): { label: string; badgeClass: string } => {
@@ -33,30 +34,53 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigateToNewCase,
   onSelectCase,
 }) => {
+  const navigate = useNavigate();
   const [cases, setCases] = useState<AuditListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchCases = async () => {
       setIsLoading(true);
       setError(null);
       try {
         const list = await api.listAudits(activePersona.token);
+        if (!isMounted) return;
         setCases(list);
       } catch (err) {
+        if (!isMounted) return;
         if (err instanceof Error) {
           setError(err.message);
         } else {
           setError('Could not load current cases.');
         }
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     fetchCases();
+    return () => {
+      isMounted = false;
+    };
   }, [activePersona]);
+
+  const handleNewCase = () => {
+    if (onNavigateToNewCase) {
+      onNavigateToNewCase();
+    } else {
+      navigate('/investigate');
+    }
+  };
+
+  const handleCaseClick = (wfId: string) => {
+    if (onSelectCase) {
+      onSelectCase(wfId);
+    } else {
+      navigate(`/investigate/${wfId}`);
+    }
+  };
 
   // Derive real counts from real backend list
   const waitingCount = cases.filter((c) => c.terminal_state === 'PENDING_APPROVAL').length;
@@ -96,7 +120,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             id="btn-home-new-case"
             className="btn btn-primary"
             style={{ padding: '0.75rem 1.4rem', fontSize: '0.95rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            onClick={onNavigateToNewCase}
+            onClick={handleNewCase}
           >
             <SearchIcon size={16} /> Look into a new case
           </button>
@@ -156,21 +180,30 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       {/* Real cases list */}
       <div className="console-panel">
-        <div className="panel-header">
+        <div className="panel-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
           <div>
             <div className="panel-title">Recent Customer Cases</div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Cases recorded in the system. Click any case to see its full story and details.
             </span>
           </div>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
-            onClick={onNavigateToNewCase}
-          >
-            + New Case
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Link
+              to="/cases"
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', textDecoration: 'none' }}
+            >
+              View all cases
+            </Link>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+              onClick={handleNewCase}
+            >
+              + New Case
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -191,7 +224,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               type="button"
               className="btn btn-primary"
               style={{ marginTop: '0.75rem' }}
-              onClick={onNavigateToNewCase}
+              onClick={handleNewCase}
             >
               Look into your first case
             </button>
@@ -214,11 +247,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     cursor: 'pointer',
                     transition: 'border-color 0.15s ease',
                   }}
-                  onClick={() => onSelectCase(c.workflow_id)}
+                  onClick={() => handleCaseClick(c.workflow_id)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') onSelectCase(c.workflow_id);
+                    if (e.key === 'Enter') handleCaseClick(c.workflow_id);
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>

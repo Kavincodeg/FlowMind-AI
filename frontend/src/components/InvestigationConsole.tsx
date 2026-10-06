@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import type { DemonstrationScenario, Persona, WorkflowInstance } from '../types';
 import { api } from '../api';
 import { EvidenceDrawer } from './EvidenceDrawer';
 import { ApprovalGate } from './ApprovalGate';
-import { SearchIcon, ShieldIcon, AlertTriangleIcon } from './Icons';
+import { SearchIcon, ShieldIcon, AlertTriangleIcon, RefreshIcon, HashIcon } from './Icons';
 
 interface InvestigationConsoleProps {
   scenarios: DemonstrationScenario[];
@@ -18,6 +19,9 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
   workflow,
   onWorkflowUpdated,
 }) => {
+  const { workflowId: routeWorkflowId } = useParams<{ workflowId?: string }>();
+  const navigate = useNavigate();
+
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('CASE-001');
   const [customerId, setCustomerId] = useState('CUST-4091');
   const [customerName, setCustomerName] = useState('Sarah Lin');
@@ -25,7 +29,45 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
     'Customer was charged twice for their monthly enterprise subscription renewal ($499 x 2). Requesting immediate refund of the duplicate charge and priority escalation.'
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingDetail, setIsFetchingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Deep-link / refresh effect: if route has a workflowId, load from API if not already matching
+  useEffect(() => {
+    let isMounted = true;
+    if (routeWorkflowId) {
+      if (!workflow || workflow.workflow_id !== routeWorkflowId) {
+        setIsFetchingDetail(true);
+        setError(null);
+        api
+          .getWorkflowDetails(routeWorkflowId, activePersona.token)
+          .then((fetched) => {
+            if (!isMounted) return;
+            onWorkflowUpdated(fetched);
+            // Sync form inputs to match the loaded workflow
+            if (fetched.request) {
+              setCustomerId(fetched.request.customer_id || '');
+              setCustomerName(fetched.request.customer_name || '');
+              setIssueSummary(fetched.request.issue_summary || '');
+            }
+          })
+          .catch((err) => {
+            if (!isMounted) return;
+            setError(err instanceof Error ? err.message : `Could not load case ${routeWorkflowId}`);
+          })
+          .finally(() => {
+            if (isMounted) setIsFetchingDetail(false);
+          });
+      } else if (workflow && workflow.request) {
+        setCustomerId(workflow.request.customer_id || '');
+        setCustomerName(workflow.request.customer_name || '');
+        setIssueSummary(workflow.request.issue_summary || '');
+      }
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [routeWorkflowId, activePersona.token]);
 
   const handleSelectScenario = (scenario: DemonstrationScenario) => {
     setSelectedScenarioId(scenario.id);
@@ -52,6 +94,8 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
         activePersona.token
       );
       onWorkflowUpdated(result);
+      // Navigate to the case's own dedicated URL so URL reflects state
+      navigate(`/investigate/${result.workflow_id}`);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -63,7 +107,19 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
     }
   };
 
-  const reasoning = workflow?.reasoning;
+  const activeWorkflow = routeWorkflowId && workflow?.workflow_id === routeWorkflowId ? workflow : workflow;
+  const reasoning = activeWorkflow?.reasoning;
+
+  if (isFetchingDetail) {
+    return (
+      <div className="console-panel" style={{ padding: '3rem 1.5rem', textAlign: 'center', maxWidth: '800px', margin: '2rem auto' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+          <RefreshIcon size={18} />
+          <span>Fetching case {routeWorkflowId} directly from FlowMind AI API...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="investigation-grid">
@@ -73,6 +129,16 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
           <div className="panel-title">
             <SearchIcon size={16} /> Look into a Customer Case
           </div>
+          {routeWorkflowId && (
+            <Link
+              to="/investigate"
+              className="btn btn-secondary"
+              style={{ fontSize: '0.725rem', padding: '0.25rem 0.5rem', textDecoration: 'none' }}
+              title="Start a new blank investigation"
+            >
+              + New Case
+            </Link>
+          )}
         </div>
 
         {/* Quick Example Scenarios */}
@@ -189,9 +255,9 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
           <div className="panel-title">
             <ShieldIcon size={16} /> What we found
           </div>
-          {workflow && (
+          {activeWorkflow && (
             <span className="hash-pill" style={{ color: 'var(--text-secondary)' }}>
-              Case WF: {workflow.workflow_id}
+              Case WF: {activeWorkflow.workflow_id}
             </span>
           )}
         </div>
@@ -200,7 +266,7 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
         <div className="timeline-list">
           <div className="timeline-item">
             <div className="timeline-marker">
-              <div className={`timeline-node ${workflow ? 'done' : isLoading ? 'active' : ''}`}>1</div>
+              <div className={`timeline-node ${activeWorkflow ? 'done' : isLoading ? 'active' : ''}`}>1</div>
               <div className="timeline-line" />
             </div>
             <div className="timeline-content">
@@ -208,8 +274,8 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
                 1. Evidence Retrieval — Checking past cases &amp; company guides
               </div>
               <div className="timeline-desc">
-                {workflow?.reasoning?.citations && workflow.reasoning.citations.length > 0
-                  ? `Found ${workflow.reasoning.citations.length} relevant records in company policies and past tickets.`
+                {activeWorkflow?.reasoning?.citations && activeWorkflow.reasoning.citations.length > 0
+                  ? `Found ${activeWorkflow.reasoning.citations.length} relevant records in company policies and past tickets.`
                   : 'Checks our knowledge base for similar tickets and official company rules.'}
               </div>
             </div>
@@ -315,12 +381,45 @@ export const InvestigationConsole: React.FC<InvestigationConsoleProps> = ({
       </div>
 
       {/* 3. Review & Decide Column */}
-      {workflow ? (
-        <ApprovalGate
-          workflow={workflow}
-          activePersona={activePersona}
-          onWorkflowUpdated={onWorkflowUpdated}
-        />
+      {activeWorkflow ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              padding: '0.5rem 0.85rem',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-default)',
+              fontSize: '0.75rem',
+            }}
+          >
+            <span style={{ color: 'var(--text-secondary)' }}>Deep-linked case actions:</span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link
+                to={`/investigate/${activeWorkflow.workflow_id}/decide`}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.725rem', padding: '0.2rem 0.5rem', textDecoration: 'none' }}
+              >
+                Full Decision Screen
+              </Link>
+              <Link
+                to={`/trust/${activeWorkflow.workflow_id}`}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.725rem', padding: '0.2rem 0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+              >
+                <HashIcon size={12} /> Audit Trail
+              </Link>
+            </div>
+          </div>
+
+          <ApprovalGate
+            workflow={activeWorkflow}
+            activePersona={activePersona}
+            onWorkflowUpdated={onWorkflowUpdated}
+          />
+        </div>
       ) : (
         <div className="console-panel">
           <div className="panel-header">

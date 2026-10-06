@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('FlowMind AI — Plain-Language Customer Support & Governance Suite', () => {
   test.beforeEach(async ({ page }) => {
@@ -323,9 +323,12 @@ test.describe('FlowMind AI — Plain-Language Customer Support & Governance Suit
 
     await page.screenshot({ path: 'screenshots/8b_rbac_denial_refund.png', fullPage: true });
 
-    // --- Denial #2: Team routing transfer (CASE-003) as Support Agent ---
-    // Navigate back and run a fresh investigation for CASE-003 (engineering defect — likely produces TRANSFER_TEAM)
-    await page.locator('.scenario-card', { hasText: 'CASE-003' }).click();
+    // --- Denial #2: Escalation denial as Support Agent ---
+    // Navigate back to fresh investigation
+    await page.locator('#nav-investigate').click();
+    await page.locator('#customer-id').fill('CUST-8821');
+    await page.locator('#customer-name').fill('Tier 2 Esc Request');
+    await page.locator('#issue-summary').fill('Please escalate this engineering defect and transfer to the Tier 2 platform engineering team immediately for system patching.');
     await submitBtn.click();
     await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
     await expect(page.locator('#btn-approve-action')).toBeVisible({ timeout: 10000 });
@@ -608,4 +611,127 @@ test.describe('FlowMind AI — Plain-Language Customer Support & Governance Suit
     // Save screenshot
     await page.screenshot({ path: 'screenshots/16_security_matrix_view.png', fullPage: true });
   });
+
+  test('17. Multi-Page Real Navigation — URLs, History, Back/Forward & Route Changes', async ({ page }) => {
+    // 1. Verify Home URL
+    await page.goto('/home');
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(page.locator('#nav-home')).toHaveClass(/active/);
+
+    // 2. Navigate to /investigate via nav button
+    await page.locator('#nav-investigate').click();
+    await expect(page).toHaveURL(/\/investigate$/);
+    await expect(page.locator('#nav-investigate')).toHaveClass(/active/);
+    await expect(page.locator('text=Look into a Customer Case')).toBeVisible();
+
+    // 3. Navigate to /cases via nav button
+    await page.locator('#nav-cases').click();
+    await expect(page).toHaveURL(/\/cases$/);
+    await expect(page.locator('#nav-cases')).toHaveClass(/active/);
+    await expect(page.locator('text=Past Customer Cases & History')).toBeVisible();
+
+    // 4. Navigate to /compare
+    await page.locator('#nav-benchmark').click();
+    await expect(page).toHaveURL(/\/compare$/);
+    await expect(page.locator('#nav-benchmark')).toHaveClass(/active/);
+    await expect(page.locator('text=Phase 4 Comparative Empirical Benchmark')).toBeVisible();
+
+    // 5. Navigate to /guides
+    await page.locator('#nav-knowledge').click();
+    await expect(page).toHaveURL(/\/guides$/);
+    await expect(page.locator('#nav-knowledge')).toHaveClass(/active/);
+    await expect(page.locator('text=Knowledge Base & Retrieval Backbone')).toBeVisible();
+
+    // 6. Navigate to /permissions
+    await page.locator('#nav-governance').click();
+    await expect(page).toHaveURL(/\/permissions$/);
+    await expect(page.locator('#nav-governance')).toHaveClass(/active/);
+    await expect(page.locator('text=Enterprise RBAC Governance & Security Matrix')).toBeVisible();
+
+    // 7. Test Browser History: Back & Forward navigation
+    await page.goBack();
+    await expect(page).toHaveURL(/\/guides$/);
+    await expect(page.locator('text=Knowledge Base & Retrieval Backbone')).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/compare$/);
+    await expect(page.locator('text=Phase 4 Comparative Empirical Benchmark')).toBeVisible();
+
+    await page.goForward();
+    await expect(page).toHaveURL(/\/guides$/);
+    await expect(page.locator('text=Knowledge Base & Retrieval Backbone')).toBeVisible();
+
+    // 8. Test Persona Picker direct route (/login)
+    await page.goto('/login');
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.locator('text=Select Your Team Role & Identity')).toBeVisible();
+    await expect(page.locator('.console-panel', { hasText: 'Elena Rostova' }).first()).toBeVisible();
+
+    // Click to select Elena Rostova and verify redirect to /home
+    await page.locator('button', { hasText: /Elena Rostova/ }).first().click();
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(page.locator('text=Hello, Elena Rostova!')).toBeVisible();
+
+    // Save screenshot
+    await page.screenshot({ path: 'screenshots/17_multi_page_navigation.png', fullPage: true });
+  });
+
+  test('18. Deep Linking & Page Refresh — Direct URL Loads Fetch Real API Data on Mount', async ({ page }) => {
+    // Select Elena Rostova (Manager) so workflow can complete and finalize audit record
+    const personaSelect = page.locator('header select');
+    await personaSelect.selectOption('USR-003');
+
+    // Step 1: Run an investigation to generate a verified real case workflow ID
+    await page.goto('/investigate');
+    await page.locator('.scenario-card', { hasText: 'CASE-001' }).click();
+    const submitBtn = page.locator('#btn-run-investigation');
+    await submitBtn.click();
+    await expect(submitBtn).not.toHaveText(/Looking into|Retrieving/, { timeout: 35000 });
+
+    // Ensure the URL updated to the case's specific URL
+    await expect(page).toHaveURL(/\/investigate\/[a-zA-Z0-9_-]+/);
+    const url = page.url();
+    const workflowId = url.split('/investigate/')[1].split('/')[0];
+    expect(workflowId).toBeTruthy();
+
+    // Step 2: Simulate direct link / hard refresh by loading /investigate/:workflowId directly
+    await page.goto(`/investigate/${workflowId}`);
+    await expect(page).toHaveURL(new RegExp(`/investigate/${workflowId}$`));
+
+    // Assert that real API data loaded on mount (not blank or default)
+    await expect(page.locator(`text=Case WF: ${workflowId}`).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=1. Evidence Retrieval')).toBeVisible();
+    await expect(page.locator('text=2. Contextual Root Cause')).toBeVisible();
+    await expect(page.locator('text=3. Security & Indirect Injection Guardrail')).toBeVisible();
+    await expect(page.locator('#issue-summary')).toContainText('charged twice');
+
+    // Step 3: Direct URL load to /investigate/:workflowId/decide (dedicated decision screen)
+    await page.goto(`/investigate/${workflowId}/decide`);
+    await expect(page).toHaveURL(new RegExp(`/investigate/${workflowId}/decide$`));
+    await expect(page.locator('text=Review & Decision Gate')).toBeVisible();
+    await expect(page.locator(`text=Case ${workflowId}`).first()).toBeVisible();
+    await expect(page.locator('#btn-approve-action')).toBeVisible();
+    // Approve and execute to finalize terminal state and cryptographic audit chain
+    await page.locator('#btn-approve-action').click();
+    await expect(page.locator('.badge', { hasText: 'APPROVED_EXECUTED' })).toBeVisible({ timeout: 10000 });
+
+    // Step 4: Direct URL load to /cases/:workflowId (case timeline & status)
+    await page.goto(`/cases/${workflowId}`);
+    await expect(page).toHaveURL(new RegExp(`/cases/${workflowId}$`));
+    await expect(page.locator(`text=Case ${workflowId}`).first()).toBeVisible();
+    await expect(page.locator('text=Case Lifecycle & Reasoning Timeline')).toBeVisible();
+    await expect(page.locator('text=Customer Complaint & Input')).toBeVisible();
+    await expect(page.locator('text=View Cryptographic Audit Record')).toBeVisible();
+
+    // Step 5: Direct URL load to /trust/:workflowId (cryptographic SHA-256 audit proof)
+    await page.goto(`/trust/${workflowId}`);
+    await expect(page).toHaveURL(new RegExp(`/trust/${workflowId}$`));
+    await expect(page.locator('text=Trust & Proof — Cryptographic SHA-256 Hash Chain Inspector')).toBeVisible();
+    await expect(page.locator('text=BLOCK #1')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Cryptographic Chain Verified (Intact)')).toBeVisible();
+
+    // Save screenshot of verified deep link load
+    await page.screenshot({ path: 'screenshots/18_deep_linking_refresh.png', fullPage: true });
+  });
 });
+
