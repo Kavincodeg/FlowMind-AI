@@ -3,9 +3,11 @@ FlowMind AI - FastAPI Application Entry Point (Phase 3)
 """
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from backend.api.routes import router as workflow_router
 
@@ -50,10 +52,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow CORS for local React/TypeScript frontend development
+# CORS: restrict to configured origins; default to localhost dev server only.
+_cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+_cors_origins = [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,9 +67,54 @@ app.add_middleware(
 app.include_router(workflow_router)
 
 
-@app.get("/health", tags=["System"])
-def health_check():
-    """System health check endpoint."""
-    return {"status": "ok", "service": "FlowMind AI", "version": "1.0.0"}
+class HealthResponse(BaseModel):
+    status: str
+    service: str = "FlowMind AI"
+    version: str = "1.0.0"
+    database: str  # "up" or "down"
+    demo_mode: bool = False
 
+
+def _is_demo_mode() -> bool:
+    return os.getenv("DEMO_MODE", "false").strip().lower() == "true"
+
+
+def _check_database() -> dict:
+    """
+    Attempt a lightweight connection to the PostgreSQL / pgvector database.
+    Returns {"status": "up"} or {"status": "down", "error": "<reason>"}.
+    """
+    try:
+        from backend.retrieval.store import _get_dsn
+        import psycopg2
+        conn = psycopg2.connect(_get_dsn())
+        conn.close()
+        return {"status": "up"}
+    except Exception as exc:
+        return {"status": "down", "error": str(exc)}
+
+
+@app.get("/health", response_model=HealthResponse, tags=["System"])
+def health_check() -> HealthResponse:
+    """
+    System health check endpoint.
+
+    Reports:
+    - service status ("ok" or "degraded")
+    - database connectivity ("up" or "down")
+    - demo_mode status (bool)
+
+    The frontend uses this to decide whether to show the
+    "We can't reach the company knowledge base right now" banner
+    and the demo accounts warning banner.
+    """
+    db_status = _check_database()
+    overall_ok = db_status["status"] == "up"
+    return HealthResponse(
+        status="ok" if overall_ok else "degraded",
+        service="FlowMind AI",
+        version="1.0.0",
+        database=db_status["status"],
+        demo_mode=_is_demo_mode(),
+    )
 

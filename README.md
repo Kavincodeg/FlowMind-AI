@@ -180,6 +180,10 @@ pip install -r requirements.txt
 # 3. Configure environment
 cp .env.example .env
 
+# NOTE: Until Prompt 4, run locally with DEMO_MODE=true, and never deploy with it on.
+# Set DEMO_MODE=true in .env for local testing to enable demo persona tokens.
+# In production, DEMO_MODE defaults to false, disabling demo token endpoints and rejecting preset tokens.
+
 # 4. Ingest knowledge documents into pgvector
 python ingest_cli.py --source all
 
@@ -187,6 +191,11 @@ python ingest_cli.py --source all
 python -m uvicorn backend.api.main:app --port 8000
 ```
 Backend API will be available at `http://127.0.0.1:8000` (Swagger docs at `http://127.0.0.1:8000/docs`).
+
+> **Security Guardrail (DEMO_MODE & CORS)**:
+> Until Prompt 4, run locally with `DEMO_MODE=true`, and never deploy with it on.
+> CORS origins are restricted via `CORS_ORIGINS` (default: `http://localhost:5173`).
+
 
 ### 3. Frontend Setup
 The frontend communicates with the backend via Vite's built-in development proxy (forwarding `/api` requests to `http://127.0.0.1:8000`).

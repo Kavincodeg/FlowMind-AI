@@ -1,12 +1,19 @@
-"""
+﻿"""
 FlowMind AI - Authentication & Identity Resolution (Phase 3)
 Resolves user identities server-side from bearer session tokens.
 CRITICAL TRUST BOUNDARY: Client request bodies can NEVER specify or override
 their own roles. Role validation is always performed against the resolved UserContext.
+
+SECURITY NOTE (DEMO_MODE):
+When DEMO_MODE=false (the default), the preset tokens in PRECONFIGURED_PERSONAS are
+NOT valid for authentication.  This prevents the hardcoded tokens from being usable
+in a production deployment even if someone discovers them in the source code.
+Set DEMO_MODE=true only for local development and demonstration; never deploy it on.
 """
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 from fastapi import Header, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -18,9 +25,18 @@ logger = logging.getLogger(__name__)
 security_scheme = HTTPBearer(auto_error=False)
 
 
+def _is_demo_mode() -> bool:
+    """Return True only when DEMO_MODE env var is explicitly 'true'."""
+    return os.getenv("DEMO_MODE", "false").strip().lower() == "true"
+
+
 def resolve_user_from_token(token: Optional[str]) -> Optional[UserContext]:
     """
     Server-side lookup mapping bearer session tokens to authenticated UserContext.
+
+    Preset tokens (PRECONFIGURED_PERSONAS) are only accepted when DEMO_MODE=true.
+    When DEMO_MODE is off, this function returns None for all preset tokens,
+    forcing a 401 response and preventing the hardcoded tokens from authenticating.
     """
     if not token:
         return None
@@ -29,7 +45,15 @@ def resolve_user_from_token(token: Optional[str]) -> Optional[UserContext]:
     if cleaned_token.lower().startswith("bearer "):
         cleaned_token = cleaned_token[7:].strip()
 
-    return PRECONFIGURED_PERSONAS.get(cleaned_token)
+    user = PRECONFIGURED_PERSONAS.get(cleaned_token)
+    if user is not None and not _is_demo_mode():
+        # Preset token found but DEMO_MODE is off: reject it.
+        logger.warning(
+            "Preset token '%s...' rejected because DEMO_MODE is not enabled.",
+            cleaned_token[:12],
+        )
+        return None
+    return user
 
 
 def get_current_user(
