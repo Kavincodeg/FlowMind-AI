@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import type { AuditListItem, Persona } from '../types';
+import { statusLabel, formatDateTime } from '../types';
 import { api } from '../api';
 import { SearchIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, XCircleIcon, ArrowRightIcon } from './Icons';
 import { getRoleCapabilitySummary } from './Header';
@@ -13,21 +14,29 @@ interface HomeViewProps {
 }
 
 export const getPlainStatusLabel = (status: string): { label: string; badgeClass: string } => {
+  const label = statusLabel(status);
+  let badgeClass = 'badge-neutral';
   switch (status) {
     case 'PENDING_APPROVAL':
-      return { label: 'Waiting for an OK', badgeClass: 'badge-warning' };
+      badgeClass = 'badge-warning';
+      break;
     case 'APPROVED_EXECUTED':
     case 'COMPLETED':
-      return { label: 'Sorted and finished', badgeClass: 'badge-success' };
+    case 'APPROVED':
+    case 'AUTO_EXECUTED':
+      badgeClass = 'badge-success';
+      break;
     case 'REJECTED':
-      return { label: 'Turned down', badgeClass: 'badge-danger' };
+    case 'FAILED':
+      badgeClass = 'badge-danger';
+      break;
     case 'ABSTAINED':
-      return { label: "Couldn't tell — no guess made", badgeClass: 'badge-warning' };
-    case 'PENDING_REASONING':
-      return { label: 'Looking into what happened...', badgeClass: 'badge-neutral' };
+      badgeClass = 'badge-warning';
+      break;
     default:
-      return { label: status, badgeClass: 'badge-neutral' };
+      badgeClass = 'badge-neutral';
   }
+  return { label, badgeClass };
 };
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -260,7 +269,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </span>
                     </div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                      Started {new Date(c.started_at).toLocaleString()}
+                      Started {formatDateTime(c.started_at)}
                     </div>
                   </div>
 

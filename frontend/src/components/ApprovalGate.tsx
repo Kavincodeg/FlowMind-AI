@@ -37,9 +37,9 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
   const recommendation = workflow.reasoning?.recommendation;
   const isPending = workflow.status === 'PENDING_APPROVAL';
   const isExecuted =
-    workflow.status === 'APPROVED_EXECUTED' ||
-    (workflow.status as string) === 'COMPLETED' ||
-    (workflow.status as string) === 'EXECUTING';
+    workflow.status === 'COMPLETED' ||
+    workflow.status === 'AUTO_EXECUTED' ||
+    workflow.status === 'EXECUTING';
   const isRejected = workflow.status === 'REJECTED';
   const isAbstained = workflow.status === 'ABSTAINED';
 
@@ -150,13 +150,8 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               </span>
             </div>
 
-            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>
               <span>{getPlainActionLabel(recommendation.action_type)}</span>
-              {recommendation.action_type && (
-                <span className="hash-pill" style={{ fontSize: '0.675rem', fontWeight: 400 }}>
-                  {recommendation.action_type}
-                </span>
-              )}
             </div>
 
             <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
@@ -166,7 +161,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
 
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem' }}>
               <strong style={{ color: 'var(--text-muted)' }}>Why: </strong>
-              {recommendation.justification}
+              {recommendation.rationale || (recommendation as any).justification}
             </div>
 
             {recommendation.parameters && Object.keys(recommendation.parameters).length > 0 && (
@@ -174,7 +169,12 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
                 <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
                   See suggested details/parameters
                 </summary>
-                <div style={{ marginTop: '0.35rem' }}>
+                <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {recommendation.action_type && (
+                    <span className="hash-pill" style={{ display: 'inline-block' }}>
+                      Action Code: {recommendation.action_type}
+                    </span>
+                  )}
                   <span className="hash-pill" style={{ display: 'inline-block' }}>
                     {JSON.stringify(recommendation.parameters)}
                   </span>
@@ -296,6 +296,16 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               </div>
             </div>
           )}
+        </div>
+      ) : workflow.status === 'FAILED' ? (
+        <div className="alert-banner alert-danger">
+          <AlertTriangleIcon size={16} />
+          <div>
+            <strong>Investigation could not complete</strong>
+            <div style={{ marginTop: '0.25rem', fontSize: '0.825rem', lineHeight: 1.45 }}>
+              {workflow.error_message || "We can't reach the company knowledge base right now. Cases can't be investigated until this is fixed."}
+            </div>
+          </div>
         </div>
       ) : isAbstained ? (
         <div className="alert-banner alert-warning">

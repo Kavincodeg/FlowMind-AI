@@ -1,0 +1,2527 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FlowMind AI - Enterprise Workflow Agent",
+    "description": "Evidence-grounded, human-governed, auditable workflow AI agent for Customer Complaint Escalation.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/users/personas": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "List pre-configured test personas with tokens (DEMO_MODE only)",
+        "description": "Retrieve pre-configured simulated personas for evaluation and UI testing.\n\nThis endpoint is ONLY available when DEMO_MODE=true.  When DEMO_MODE is\noff (the default) it returns 404, because exposing tokens in a production\nenvironment would be a security vulnerability.",
+        "operationId": "list_personas_api_users_personas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonaResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Personas Api Users Personas Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Get currently authenticated user identity",
+        "description": "Inspect the server-resolved identity of the current token.",
+        "operationId": "get_me_api_users_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenarios": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "List pre-configured benchmark demonstration scenarios",
+        "description": "Retrieve pre-configured customer complaint scenarios for UI 1-click testing.",
+        "operationId": "list_scenarios_api_scenarios_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DemonstrationScenarioResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Scenarios Api Scenarios Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/investigate": {
+      "post": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Start a customer complaint investigation",
+        "description": "Initiates the investigation pipeline:\n  retrieval -> reasoning -> recommendation -> (abstention | auto-execute | pending approval)",
+        "operationId": "investigate_complaint_api_workflow_investigate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintInvestigationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{workflow_id}": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Get workflow state and details",
+        "description": "Retrieve the current state, evidence citations, and recommendation for a workflow.",
+        "operationId": "get_workflow_details_api_workflow__workflow_id__get",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{workflow_id}/decision": {
+      "post": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Submit human approval decision (RBAC-gated)",
+        "description": "Submit a human governance decision (APPROVE, REJECT, or MODIFY).\nCRITICAL: Approver role is resolved strictly from the server session, preventing forgery.",
+        "operationId": "submit_workflow_decision_api_workflow__workflow_id__decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          },
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalSubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{workflow_id}/audit": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Get complete tamper-evident audit trail",
+        "description": "Retrieve the finalized, state-dependent audit trail for a workflow.",
+        "operationId": "get_workflow_audit_api_workflow__workflow_id__audit_get",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditExportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{workflow_id}/audit/verify": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Verify SHA-256 tamper-evident audit hash chain",
+        "description": "Re-derive every event hash server-side from stored content and confirm chain integrity.\n\nThis endpoint is entirely independent of the write path: it calls verify_event_chain()\nfrom audit/chain.py which recomputes SHA-256 from scratch for each event and checks both\n(a) content integrity (recomputed hash matches stored block_hash) and\n(b) chain linkage (stored parent_hash matches previous event's block_hash).\n\nReturns a real boolean result indicating whether the chain is intact, plus the index and\nevent_id of the first failing event if the chain is broken.",
+        "operationId": "verify_workflow_audit_chain_api_workflow__workflow_id__audit_verify_get",
+        "parameters": [
+          {
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workflow Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audits": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "List all recorded audit records",
+        "description": "List all completed audit logs in the system.",
+        "operationId": "list_all_audits_api_audits_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditSummaryResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List All Audits Api Audits Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evaluation/benchmark": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Retrieve comparative benchmark metrics evaluating FlowMind AI against the Plain-RAG Baseline",
+        "description": "Retrieve comparative benchmark metrics evaluating FlowMind AI against the Plain-RAG Baseline.",
+        "operationId": "get_benchmark_results_api_evaluation_benchmark_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          },
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/evaluation/retrieval": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Retrieve Information Retrieval quality metrics (Precision@K, Recall@K, MRR)",
+        "description": "Retrieve Information Retrieval quality metrics (Precision@K, Recall@K, MRR).",
+        "operationId": "get_retrieval_metrics_api_evaluation_retrieval_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetrievalMetrics"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge/policies": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "List enterprise policy documents",
+        "description": "Retrieve full text of enterprise governance policies from disk.",
+        "operationId": "list_policies_api_knowledge_policies_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PolicyDocumentResponse"
+                  },
+                  "title": "Response List Policies Api Knowledge Policies Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge/tickets": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "List historical customer tickets",
+        "description": "Retrieve historical tickets from synthetic dataset for knowledge exploration.",
+        "operationId": "list_tickets_api_knowledge_tickets_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TicketListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge/search": {
+      "post": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Interactive vector retrieval sandbox",
+        "description": "Execute live semantic retrieval against pgvector / knowledge backbone.",
+        "operationId": "search_knowledge_api_knowledge_search_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/security/matrix": {
+      "get": {
+        "tags": [
+          "Workflow & Governance"
+        ],
+        "summary": "Get complete RBAC role-permission matrix",
+        "description": "Retrieve full RBAC permission matrix, action sensitivity, and governance rules.",
+        "operationId": "get_security_matrix_api_security_matrix_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-User-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityMatrixResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health Check",
+        "description": "System health check endpoint.\n\nReports:\n- service status (\"ok\" or \"degraded\")\n- database connectivity (\"up\" or \"down\")\n- demo_mode status (bool)\n\nThe frontend uses this to decide whether to show the\n\"We can't reach the company knowledge base right now\" banner\nand the demo accounts warning banner.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionRecommendationResponse": {
+        "properties": {
+          "action_type": {
+            "type": "string",
+            "title": "Action Type"
+          },
+          "parameters": {
+            "type": "object",
+            "title": "Parameters"
+          },
+          "confidence_score": {
+            "type": "number",
+            "title": "Confidence Score",
+            "default": 0.0
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          },
+          "requires_human_approval": {
+            "type": "boolean",
+            "title": "Requires Human Approval",
+            "default": false
+          },
+          "target_connector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Connector"
+          },
+          "target_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Team"
+          },
+          "escalation_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Level"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_type"
+        ],
+        "title": "ActionRecommendationResponse"
+      },
+      "ActionType": {
+        "type": "string",
+        "enum": [
+          "ESCALATE_TICKET",
+          "TRANSFER_TEAM",
+          "REQUEST_CUSTOMER_INFO",
+          "ISSUE_REFUND_RECOMMENDATION",
+          "RESOLVE_STANDARD",
+          "NO_ACTION"
+        ],
+        "title": "ActionType",
+        "description": "Permitted action types in the Customer Complaint Escalation workflow."
+      },
+      "ApprovalDecisionType": {
+        "type": "string",
+        "enum": [
+          "APPROVE",
+          "REJECT",
+          "MODIFY"
+        ],
+        "title": "ApprovalDecisionType",
+        "description": "Decision submitted by human governance authority."
+      },
+      "ApprovalSubmission": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ApprovalDecisionType"
+          },
+          "rejection_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejection Reason"
+          },
+          "modified_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextBestAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "ApprovalSubmission",
+        "description": "Client submission for human-in-the-loop governance.\nCRITICAL TRUST BOUNDARY: Approver identity and role are NEVER supplied here.\nThey are strictly resolved server-side from the authenticated UserContext."
+      },
+      "AuditExportResponse": {
+        "properties": {
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "terminal_state": {
+            "type": "string",
+            "title": "Terminal State"
+          },
+          "is_complete": {
+            "type": "boolean",
+            "title": "Is Complete"
+          },
+          "timeline": {
+            "$ref": "#/components/schemas/AuditTimeline"
+          },
+          "investigation": {
+            "type": "object",
+            "title": "Investigation"
+          },
+          "human_governance": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Human Governance"
+          },
+          "automation_execution": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Automation Execution"
+          },
+          "chain_events": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Chain Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit_id",
+          "workflow_id",
+          "terminal_state",
+          "is_complete",
+          "timeline",
+          "investigation"
+        ],
+        "title": "AuditExportResponse"
+      },
+      "AuditSummaryResponse": {
+        "properties": {
+          "audit_id": {
+            "type": "string",
+            "title": "Audit Id"
+          },
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "terminal_state": {
+            "type": "string",
+            "title": "Terminal State"
+          },
+          "is_complete": {
+            "type": "boolean",
+            "title": "Is Complete"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit_id",
+          "workflow_id",
+          "terminal_state",
+          "is_complete",
+          "started_at"
+        ],
+        "title": "AuditSummaryResponse"
+      },
+      "AuditTimeline": {
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "started_at"
+        ],
+        "title": "AuditTimeline"
+      },
+      "AuditVerifyResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "chain_length": {
+            "type": "integer",
+            "title": "Chain Length"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "failed_at_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed At Index"
+          },
+          "failed_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Event Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "chain_length",
+          "valid"
+        ],
+        "title": "AuditVerifyResponse"
+      },
+      "BaselineCaseResult": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "answer_text": {
+            "type": "string",
+            "title": "Answer Text"
+          },
+          "citations_count": {
+            "type": "integer",
+            "title": "Citations Count",
+            "default": 0
+          },
+          "action_suggested": {
+            "type": "boolean",
+            "title": "Action Suggested",
+            "description": "True if baseline generated an unstructured action mention",
+            "default": false
+          },
+          "action_executed": {
+            "type": "boolean",
+            "title": "Action Executed",
+            "description": "Always False: baseline has no execution connector",
+            "default": false
+          },
+          "approval_gated": {
+            "type": "boolean",
+            "title": "Approval Gated",
+            "description": "Always False: baseline has no approval mechanism",
+            "default": false
+          },
+          "audit_trail_created": {
+            "type": "boolean",
+            "title": "Audit Trail Created",
+            "description": "Always False: baseline has no audit logging",
+            "default": false
+          },
+          "citation_integrity": {
+            "type": "boolean",
+            "title": "Citation Integrity",
+            "description": "Option A: True if baseline citations/sources strictly reference actually-retrieved chunks",
+            "default": true
+          },
+          "latency_breakdown": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Latency Breakdown",
+            "description": "Timing breakdown: retrieval_ms, generation_ms, total_ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "category",
+          "answer_text"
+        ],
+        "title": "BaselineCaseResult",
+        "description": "Detailed evaluation outcome of a single test case processed by the Plain-RAG Baseline."
+      },
+      "BenchmarkResult": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "dataset_size": {
+            "type": "integer",
+            "title": "Dataset Size"
+          },
+          "llm_provider": {
+            "type": "string",
+            "title": "Llm Provider",
+            "description": "LLM provider used for the primary comparative benchmark run",
+            "default": "MockLLMProvider (deterministic, offline, no live API calls)"
+          },
+          "retrieval_metrics": {
+            "$ref": "#/components/schemas/RetrievalMetrics"
+          },
+          "comparative_summary": {
+            "$ref": "#/components/schemas/ComparativeMetricsSummary"
+          },
+          "real_provider_latency_sample": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Real Provider Latency Sample"
+          },
+          "flowmind_cases": {
+            "items": {
+              "$ref": "#/components/schemas/FlowMindCaseResult"
+            },
+            "type": "array",
+            "title": "Flowmind Cases"
+          },
+          "baseline_cases": {
+            "items": {
+              "$ref": "#/components/schemas/BaselineCaseResult"
+            },
+            "type": "array",
+            "title": "Baseline Cases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "dataset_size",
+          "retrieval_metrics",
+          "comparative_summary",
+          "flowmind_cases",
+          "baseline_cases"
+        ],
+        "title": "BenchmarkResult",
+        "description": "Comprehensive output artifact representing a completed evaluation run."
+      },
+      "CitationResponse": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type",
+            "default": ""
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id",
+            "default": ""
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index",
+            "default": 0
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "citation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "relevance_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance Reason"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "CitationResponse"
+      },
+      "ComparativeMetricsSummary": {
+        "properties": {
+          "total_cases": {
+            "type": "integer",
+            "title": "Total Cases"
+          },
+          "flowmind_task_success_rate": {
+            "type": "number",
+            "title": "Flowmind Task Success Rate"
+          },
+          "baseline_task_success_rate": {
+            "type": "number",
+            "title": "Baseline Task Success Rate"
+          },
+          "flowmind_action_accuracy": {
+            "type": "number",
+            "title": "Flowmind Action Accuracy"
+          },
+          "baseline_action_accuracy": {
+            "type": "number",
+            "title": "Baseline Action Accuracy"
+          },
+          "flowmind_citation_integrity_rate": {
+            "type": "number",
+            "title": "Flowmind Citation Integrity Rate"
+          },
+          "baseline_citation_integrity_rate": {
+            "type": "number",
+            "title": "Baseline Citation Integrity Rate"
+          },
+          "flowmind_approval_compliance_rate": {
+            "type": "number",
+            "title": "Flowmind Approval Compliance Rate"
+          },
+          "baseline_approval_compliance_rate": {
+            "type": "number",
+            "title": "Baseline Approval Compliance Rate"
+          },
+          "flowmind_injection_defense_rate": {
+            "type": "number",
+            "title": "Flowmind Injection Defense Rate"
+          },
+          "baseline_injection_defense_rate": {
+            "type": "number",
+            "title": "Baseline Injection Defense Rate"
+          },
+          "flowmind_audit_completeness_rate": {
+            "type": "number",
+            "title": "Flowmind Audit Completeness Rate"
+          },
+          "baseline_audit_completeness_rate": {
+            "type": "number",
+            "title": "Baseline Audit Completeness Rate"
+          },
+          "flowmind_mean_latency_ms": {
+            "type": "number",
+            "title": "Flowmind Mean Latency Ms"
+          },
+          "baseline_mean_latency_ms": {
+            "type": "number",
+            "title": "Baseline Mean Latency Ms"
+          },
+          "category_breakdown": {
+            "additionalProperties": {
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Category Breakdown"
+          },
+          "real_provider_latency_sample": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Real Provider Latency Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_cases",
+          "flowmind_task_success_rate",
+          "baseline_task_success_rate",
+          "flowmind_action_accuracy",
+          "baseline_action_accuracy",
+          "flowmind_citation_integrity_rate",
+          "baseline_citation_integrity_rate",
+          "flowmind_approval_compliance_rate",
+          "baseline_approval_compliance_rate",
+          "flowmind_injection_defense_rate",
+          "baseline_injection_defense_rate",
+          "flowmind_audit_completeness_rate",
+          "baseline_audit_completeness_rate",
+          "flowmind_mean_latency_ms",
+          "baseline_mean_latency_ms"
+        ],
+        "title": "ComparativeMetricsSummary",
+        "description": "Comparative performance matrix contrasting FlowMind AI against the Plain-RAG Baseline.\nCaptures empirical research findings without predetermined pass/fail thresholds."
+      },
+      "ComplaintInvestigationRequest": {
+        "properties": {
+          "customer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "issue_summary": {
+            "type": "string",
+            "title": "Issue Summary"
+          },
+          "target_ticket_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Ticket Id"
+          },
+          "user_role": {
+            "type": "string",
+            "title": "User Role",
+            "default": "support_agent"
+          },
+          "top_k_tickets": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Top K Tickets",
+            "default": 5
+          },
+          "top_k_policies": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Top K Policies",
+            "default": 4
+          }
+        },
+        "type": "object",
+        "required": [
+          "issue_summary"
+        ],
+        "title": "ComplaintInvestigationRequest",
+        "description": "Input request to investigate a customer complaint."
+      },
+      "ComplaintRequestSummary": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "issue_summary": {
+            "type": "string",
+            "title": "Issue Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "customer_name",
+          "issue_summary"
+        ],
+        "title": "ComplaintRequestSummary"
+      },
+      "CurrentUserResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "department": {
+            "type": "string",
+            "title": "Department"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "department"
+        ],
+        "title": "CurrentUserResponse"
+      },
+      "DemonstrationScenarioResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "badge": {
+            "type": "string",
+            "title": "Badge"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "issue_summary": {
+            "type": "string",
+            "title": "Issue Summary"
+          },
+          "expected_action": {
+            "type": "string",
+            "title": "Expected Action"
+          },
+          "required_role": {
+            "type": "string",
+            "title": "Required Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "category",
+          "badge",
+          "customer_id",
+          "customer_name",
+          "issue_summary",
+          "expected_action",
+          "required_role"
+        ],
+        "title": "DemonstrationScenarioResponse"
+      },
+      "EscalationLevel": {
+        "type": "string",
+        "enum": [
+          "L1",
+          "L2",
+          "L3",
+          "L4"
+        ],
+        "title": "EscalationLevel",
+        "description": "Escalation tier per company escalation policy."
+      },
+      "ExecutionRecordResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "transaction_id": {
+            "type": "string",
+            "title": "Transaction Id"
+          },
+          "connector_name": {
+            "type": "string",
+            "title": "Connector Name"
+          },
+          "action_type": {
+            "type": "string",
+            "title": "Action Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "details": {
+            "type": "object",
+            "title": "Details"
+          },
+          "executed_at": {
+            "type": "string",
+            "title": "Executed At"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms",
+            "default": 0.0
+          },
+          "is_idempotent_replay": {
+            "type": "boolean",
+            "title": "Is Idempotent Replay",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "transaction_id",
+          "connector_name",
+          "action_type",
+          "status",
+          "executed_at"
+        ],
+        "title": "ExecutionRecordResponse"
+      },
+      "FlowMindCaseResult": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "action_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Type"
+          },
+          "escalation_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalation Level"
+          },
+          "target_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Team"
+          },
+          "action_correct": {
+            "type": "boolean",
+            "title": "Action Correct",
+            "description": "True if recommended action matches ground truth expectations",
+            "default": false
+          },
+          "task_success": {
+            "type": "boolean",
+            "title": "Task Success",
+            "description": "True if workflow completed its expected lifecycle state without error",
+            "default": false
+          },
+          "approval_required": {
+            "type": "boolean",
+            "title": "Approval Required",
+            "description": "True if action required human approval gating",
+            "default": false
+          },
+          "approval_complied": {
+            "type": "boolean",
+            "title": "Approval Complied",
+            "description": "True if approval gating was strictly respected",
+            "default": true
+          },
+          "injection_detected": {
+            "type": "boolean",
+            "title": "Injection Detected",
+            "description": "True if prompt injection was detected",
+            "default": false
+          },
+          "injection_defended": {
+            "type": "boolean",
+            "title": "Injection Defended",
+            "description": "True if prompt injection was safely neutralized",
+            "default": true
+          },
+          "citation_integrity": {
+            "type": "boolean",
+            "title": "Citation Integrity",
+            "description": "True if all output citations were grounded in retrieved evidence",
+            "default": true
+          },
+          "audit_complete": {
+            "type": "boolean",
+            "title": "Audit Complete",
+            "description": "True if lifecycle produced an audit record meeting is_complete criteria",
+            "default": false
+          },
+          "latency_breakdown": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Latency Breakdown",
+            "description": "Timing breakdown: retrieval_ms, reasoning_ms, execution_ms, total_ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "category",
+          "status"
+        ],
+        "title": "FlowMindCaseResult",
+        "description": "Detailed evaluation outcome of a single test case processed by FlowMind AI."
+      },
+      "GovernanceRulesResponse": {
+        "properties": {
+          "rejection_rationale_mandatory": {
+            "type": "boolean",
+            "title": "Rejection Rationale Mandatory",
+            "default": true
+          },
+          "parameter_modification_enforced": {
+            "type": "boolean",
+            "title": "Parameter Modification Enforced",
+            "default": true
+          },
+          "server_token_resolution": {
+            "type": "boolean",
+            "title": "Server Token Resolution",
+            "default": true
+          },
+          "hash_chain_immutability": {
+            "type": "boolean",
+            "title": "Hash Chain Immutability",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "GovernanceRulesResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service",
+            "default": "FlowMind AI"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "1.0.0"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "demo_mode": {
+            "type": "boolean",
+            "title": "Demo Mode",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database"
+        ],
+        "title": "HealthResponse"
+      },
+      "KnowledgeSearchChunk": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type"
+          },
+          "source_id": {
+            "type": "string",
+            "title": "Source Id"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "similarity_score": {
+            "type": "number",
+            "title": "Similarity Score"
+          },
+          "metadata": {
+            "type": "object",
+            "title": "Metadata"
+          },
+          "citation": {
+            "type": "string",
+            "title": "Citation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "source_type",
+          "source_id",
+          "chunk_index",
+          "content",
+          "similarity_score",
+          "citation"
+        ],
+        "title": "KnowledgeSearchChunk"
+      },
+      "KnowledgeSearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "latency_ms": {
+            "type": "number",
+            "title": "Latency Ms"
+          },
+          "total_retrieved": {
+            "type": "integer",
+            "title": "Total Retrieved"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSearchChunk"
+            },
+            "type": "array",
+            "title": "Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "latency_ms",
+          "total_retrieved",
+          "chunks"
+        ],
+        "title": "KnowledgeSearchResponse"
+      },
+      "NextBestAction": {
+        "properties": {
+          "action_type": {
+            "$ref": "#/components/schemas/ActionType"
+          },
+          "target_team": {
+            "type": "string",
+            "title": "Target Team"
+          },
+          "escalation_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EscalationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "urgency": {
+            "type": "string",
+            "title": "Urgency",
+            "default": "medium"
+          },
+          "parameters": {
+            "type": "object",
+            "title": "Parameters"
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "title": "Requires Approval",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_type",
+          "target_team"
+        ],
+        "title": "NextBestAction",
+        "description": "Structured action proposal for the workflow."
+      },
+      "PersonaResponse": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "department": {
+            "type": "string",
+            "title": "Department"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "name",
+          "role",
+          "department"
+        ],
+        "title": "PersonaResponse"
+      },
+      "PolicyDocumentResponse": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "title",
+          "content",
+          "size_bytes"
+        ],
+        "title": "PolicyDocumentResponse"
+      },
+      "ReasoningResponse": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "abstention_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Abstention Reason"
+          },
+          "root_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Cause"
+          },
+          "identified_root_cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identified Root Cause"
+          },
+          "customer_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Summary"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          },
+          "confidence_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Score"
+          },
+          "requires_human_approval": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requires Human Approval"
+          },
+          "indirect_injection_detected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Indirect Injection Detected"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActionRecommendationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationResponse"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "retrieval_summary": {
+            "type": "object",
+            "title": "Retrieval Summary"
+          },
+          "reasoning_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Time Ms"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used"
+          }
+        },
+        "type": "object",
+        "title": "ReasoningResponse"
+      },
+      "RetrievalMetrics": {
+        "properties": {
+          "precision_at_3": {
+            "type": "number",
+            "title": "Precision At 3",
+            "description": "Precision@3: proportion of top-3 retrieved items that are relevant",
+            "default": 0.0
+          },
+          "precision_at_5": {
+            "type": "number",
+            "title": "Precision At 5",
+            "description": "Precision@5: proportion of top-5 retrieved items that are relevant",
+            "default": 0.0
+          },
+          "recall_at_5": {
+            "type": "number",
+            "title": "Recall At 5",
+            "description": "Recall@5: proportion of relevant items retrieved in top-5",
+            "default": 0.0
+          },
+          "mrr": {
+            "type": "number",
+            "title": "Mrr",
+            "description": "Mean Reciprocal Rank (MRR) of first relevant item",
+            "default": 0.0
+          },
+          "mean_latency_ms": {
+            "type": "number",
+            "title": "Mean Latency Ms",
+            "description": "Mean retrieval query latency in milliseconds",
+            "default": 0.0
+          },
+          "total_queries": {
+            "type": "integer",
+            "title": "Total Queries",
+            "description": "Total number of evaluated retrieval queries",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "RetrievalMetrics",
+        "description": "Standard information retrieval evaluation metrics."
+      },
+      "SecurityActionRule": {
+        "properties": {
+          "action_type": {
+            "type": "string",
+            "title": "Action Type"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          },
+          "sensitive": {
+            "type": "boolean",
+            "title": "Sensitive"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "authorized_roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Authorized Roles"
+          },
+          "requires_approval": {
+            "type": "boolean",
+            "title": "Requires Approval"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action_type",
+          "label",
+          "tier",
+          "sensitive",
+          "description",
+          "authorized_roles",
+          "requires_approval"
+        ],
+        "title": "SecurityActionRule"
+      },
+      "SecurityMatrixResponse": {
+        "properties": {
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityActionRule"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "governance_rules": {
+            "$ref": "#/components/schemas/GovernanceRulesResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "roles",
+          "actions"
+        ],
+        "title": "SecurityMatrixResponse"
+      },
+      "TicketListResponse": {
+        "properties": {
+          "tickets": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Tickets"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "total_corpus": {
+            "type": "integer",
+            "title": "Total Corpus"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tickets",
+          "total",
+          "total_corpus",
+          "categories"
+        ],
+        "title": "TicketListResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkflowResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "request": {
+            "$ref": "#/components/schemas/ComplaintRequestSummary"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasoningResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "approval_record": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Record"
+          },
+          "execution_record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionRecordResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "status",
+          "started_at",
+          "request"
+        ],
+        "title": "WorkflowResponse"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

@@ -77,7 +77,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}, token?: s
 }
 
 export const api = {
-  checkHealth: async (): Promise<{ status: string; service: string; version: string }> => {
+  checkHealth: async (): Promise<{ status: string; service: string; version: string; database: 'up' | 'down'; demo_mode: boolean }> => {
     return request('/health');
   },
 

@@ -6,6 +6,7 @@ import { getPlainStatusLabel } from './HomeView';
 import { SearchIcon, RefreshIcon, AlertTriangleIcon, HashIcon, LayersIcon } from './Icons';
 import { Button, LoadingState, EmptyState } from './ui';
 import type { AuditListItem } from '../types';
+import { formatDateTime } from '../types';
 
 export const CasesListView: React.FC = () => {
   const { activePersona } = useAppContext();
@@ -195,7 +196,7 @@ export const CasesListView: React.FC = () => {
                       </span>
                     </div>
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                      Started {new Date(c.started_at).toLocaleString()} &bull; Audit ID: {c.audit_id}
+                      Started {formatDateTime(c.started_at)} &bull; Audit ID: {c.audit_id}
                     </div>
                   </div>
 

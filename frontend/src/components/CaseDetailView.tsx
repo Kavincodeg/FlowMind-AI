@@ -7,6 +7,7 @@ import { HashIcon, AlertTriangleIcon, ArrowRightIcon, ClockIcon } from './Icons'
 import { ExecutionOutcome } from './ExecutionOutcome';
 import { LoadingState } from './ui';
 import type { WorkflowInstance } from '../types';
+import { formatDateTime } from '../types';
 
 export const CaseDetailView: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
@@ -132,7 +133,7 @@ export const CaseDetailView: React.FC = () => {
             </span>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-            Started: {new Date(workflow.started_at).toLocaleString()} &bull; State: {workflow.status}
+            Started: {formatDateTime(workflow.started_at)} &bull; State: {statusInfo.label}
           </div>
         </div>
 

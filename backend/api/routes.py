@@ -6,6 +6,7 @@ CRITICAL TRUST BOUNDARY: Approvals rely exclusively on server-resolved UserConte
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -17,19 +18,53 @@ from backend.reasoning.models import ComplaintInvestigationRequest
 from backend.security.auth import get_current_user
 from backend.security.models import PRECONFIGURED_PERSONAS, UserContext
 from backend.security.rbac import RBACPermissionDeniedError
+from backend.api.models import (
+    AuditExportResponse,
+    AuditSummaryResponse,
+    AuditVerifyResponse,
+    CurrentUserResponse,
+    DemonstrationScenarioResponse,
+    KnowledgeSearchResponse,
+    PersonaResponse,
+    PolicyDocumentResponse,
+    SecurityMatrixResponse,
+    TicketListResponse,
+    WorkflowResponse,
+)
+from backend.evaluation.models import BenchmarkResult, RetrievalMetrics
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Workflow & Governance"])
 
 
+def _is_demo_mode() -> bool:
+    """Return True only when the DEMO_MODE environment variable is explicitly set to 'true'."""
+    return os.getenv("DEMO_MODE", "false").strip().lower() == "true"
+
+
 # ----------------------------------------------------------------------
 # 1. User & Persona Endpoints
 # ----------------------------------------------------------------------
 
-@router.get("/users/personas", summary="List pre-configured test personas with tokens")
+@router.get(
+    "/users/personas",
+    response_model=List[PersonaResponse],
+    summary="List pre-configured test personas with tokens (DEMO_MODE only)",
+)
 def list_personas() -> List[Dict[str, Any]]:
-    """Retrieve pre-configured simulated personas for evaluation and UI testing."""
+    """
+    Retrieve pre-configured simulated personas for evaluation and UI testing.
+
+    This endpoint is ONLY available when DEMO_MODE=true.  When DEMO_MODE is
+    off (the default) it returns 404, because exposing tokens in a production
+    environment would be a security vulnerability.
+    """
+    if not _is_demo_mode():
+        raise HTTPException(
+            status_code=404,
+            detail="Persona tokens are only available in DEMO_MODE. Set DEMO_MODE=true to enable.",
+        )
     return [
         {
             "user_id": p.user_id,
@@ -42,7 +77,11 @@ def list_personas() -> List[Dict[str, Any]]:
     ]
 
 
-@router.get("/users/me", summary="Get currently authenticated user identity")
+@router.get(
+    "/users/me",
+    response_model=CurrentUserResponse,
+    summary="Get currently authenticated user identity",
+)
 def get_me(user: UserContext = Depends(get_current_user)) -> Dict[str, Any]:
     """Inspect the server-resolved identity of the current token."""
     return {
@@ -105,7 +144,11 @@ PRECONFIGURED_SCENARIOS = [
 ]
 
 
-@router.get("/scenarios", summary="List pre-configured benchmark demonstration scenarios")
+@router.get(
+    "/scenarios",
+    response_model=List[DemonstrationScenarioResponse],
+    summary="List pre-configured benchmark demonstration scenarios",
+)
 def list_scenarios() -> List[Dict[str, Any]]:
     """Retrieve pre-configured customer complaint scenarios for UI 1-click testing."""
     return PRECONFIGURED_SCENARIOS
@@ -115,7 +158,11 @@ def list_scenarios() -> List[Dict[str, Any]]:
 # 2. Workflow Endpoints
 # ----------------------------------------------------------------------
 
-@router.post("/workflow/investigate", summary="Start a customer complaint investigation")
+@router.post(
+    "/workflow/investigate",
+    response_model=WorkflowResponse,
+    summary="Start a customer complaint investigation",
+)
 def investigate_complaint(
     request: ComplaintInvestigationRequest,
     user: UserContext = Depends(get_current_user),
@@ -133,7 +180,11 @@ def investigate_complaint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/workflow/{workflow_id}", summary="Get workflow state and details")
+@router.get(
+    "/workflow/{workflow_id}",
+    response_model=WorkflowResponse,
+    summary="Get workflow state and details",
+)
 def get_workflow_details(
     workflow_id: str,
     orchestrator: WorkflowOrchestrator = Depends(get_orchestrator),
@@ -145,7 +196,11 @@ def get_workflow_details(
     return _format_workflow_response(instance)
 
 
-@router.post("/workflow/{workflow_id}/decision", summary="Submit human approval decision (RBAC-gated)")
+@router.post(
+    "/workflow/{workflow_id}/decision",
+    response_model=WorkflowResponse,
+    summary="Submit human approval decision (RBAC-gated)",
+)
 def submit_workflow_decision(
     workflow_id: str,
     submission: ApprovalSubmission,
@@ -191,7 +246,11 @@ def submit_workflow_decision(
 # 3. Audit Endpoints
 # ----------------------------------------------------------------------
 
-@router.get("/workflow/{workflow_id}/audit", summary="Get complete tamper-evident audit trail")
+@router.get(
+    "/workflow/{workflow_id}/audit",
+    response_model=AuditExportResponse,
+    summary="Get complete tamper-evident audit trail",
+)
 def get_workflow_audit(
     workflow_id: str,
     audit_service: AuditService = Depends(get_audit_service),
@@ -203,7 +262,11 @@ def get_workflow_audit(
         raise HTTPException(status_code=404, detail=f"Audit record not found for workflow '{workflow_id}'.")
 
 
-@router.get("/workflow/{workflow_id}/audit/verify", summary="Verify SHA-256 tamper-evident audit hash chain")
+@router.get(
+    "/workflow/{workflow_id}/audit/verify",
+    response_model=AuditVerifyResponse,
+    summary="Verify SHA-256 tamper-evident audit hash chain",
+)
 def verify_workflow_audit_chain(
     workflow_id: str,
     audit_service: AuditService = Depends(get_audit_service),
@@ -231,7 +294,11 @@ def verify_workflow_audit_chain(
         "failed_event_id": result["failed_event_id"],
     }
 
-@router.get("/audits", summary="List all recorded audit records")
+@router.get(
+    "/audits",
+    response_model=List[AuditSummaryResponse],
+    summary="List all recorded audit records",
+)
 def list_all_audits(
     audit_service: AuditService = Depends(get_audit_service),
 ) -> List[Dict[str, Any]]:
@@ -292,7 +359,11 @@ def _format_workflow_response(instance: WorkflowInstance) -> Dict[str, Any]:
 _cached_benchmark_result: Optional[Dict[str, Any]] = None
 
 
-@router.get("/evaluation/benchmark")
+@router.get(
+    "/evaluation/benchmark",
+    response_model=BenchmarkResult,
+    summary="Retrieve comparative benchmark metrics evaluating FlowMind AI against the Plain-RAG Baseline",
+)
 async def get_benchmark_results(
     refresh: bool = False,
     current_user: UserContext = Depends(get_current_user),
@@ -311,7 +382,11 @@ async def get_benchmark_results(
     return _cached_benchmark_result
 
 
-@router.get("/evaluation/retrieval")
+@router.get(
+    "/evaluation/retrieval",
+    response_model=RetrievalMetrics,
+    summary="Retrieve Information Retrieval quality metrics (Precision@K, Recall@K, MRR)",
+)
 async def get_retrieval_metrics(
     current_user: UserContext = Depends(get_current_user),
 ) -> Dict[str, Any]:
@@ -328,23 +403,53 @@ async def get_retrieval_metrics(
 # 4. Knowledge Base & Policies Endpoints
 # ----------------------------------------------------------------------
 
-@router.get("/knowledge/policies", summary="List enterprise policy documents")
+# Canonical mapping from policy filename to display title.
+# Using this shared mapping ensures the UI and API always agree on titles;
+# no more "Sla Policy" from a naive .title() call.
+POLICY_TITLE_MAP: Dict[str, str] = {
+    "data_handling_policy.md": "Data Handling Policy",
+    "escalation_policy.md": "Escalation Policy",
+    "refund_policy.md": "Refund Policy",
+    "sla_policy.md": "SLA Policy",
+    "team_routing.md": "Team Routing Guide",
+}
+
+
+def _policy_display_title(fname: str, content: str) -> str:
+    """
+    Return a human-readable policy title.
+
+    Priority:
+    1. The POLICY_TITLE_MAP canonical name (prevents "Sla Policy" style bugs).
+    2. The first H1 markdown heading found in the file content.
+    3. Fallback: filename without extension, spaces instead of underscores,
+       title-cased (least preferred, included only for future unknown files).
+    """
+    if fname in POLICY_TITLE_MAP:
+        return POLICY_TITLE_MAP[fname]
+    for line in content.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return fname.replace(".md", "").replace("_", " ").title()
+
+
+@router.get(
+    "/knowledge/policies",
+    response_model=List[PolicyDocumentResponse],
+    summary="List enterprise policy documents",
+)
 def list_policies(current_user: UserContext = Depends(get_current_user)) -> List[Dict[str, Any]]:
     """Retrieve full text of enterprise governance policies from disk."""
-    import os
+    import os as _os
     from pathlib import Path
     policy_dir = Path(__file__).parent.parent / "data" / "synthetic" / "policies"
     policies = []
-    if os.path.exists(str(policy_dir)):
-        for fname in sorted(os.listdir(str(policy_dir))):
+    if _os.path.exists(str(policy_dir)):
+        for fname in sorted(_os.listdir(str(policy_dir))):
             if fname.endswith(".md"):
                 fpath = policy_dir / fname
                 content = fpath.read_text(encoding="utf-8")
-                title = fname.replace(".md", "").replace("_", " ").title()
-                for line in content.splitlines():
-                    if line.startswith("# "):
-                        title = line.replace("# ", "").strip()
-                        break
+                title = _policy_display_title(fname, content)
                 policies.append({
                     "filename": fname,
                     "title": title,
@@ -354,7 +459,11 @@ def list_policies(current_user: UserContext = Depends(get_current_user)) -> List
     return policies
 
 
-@router.get("/knowledge/tickets", summary="List historical customer tickets")
+@router.get(
+    "/knowledge/tickets",
+    response_model=TicketListResponse,
+    summary="List historical customer tickets",
+)
 def list_tickets(
     category: Optional[str] = None,
     limit: int = 50,
@@ -365,18 +474,18 @@ def list_tickets(
     from pathlib import Path
     tickets_path = Path(__file__).parent.parent / "data" / "synthetic" / "tickets.json"
     if not tickets_path.exists():
-        return {"tickets": [], "total": 0, "categories": []}
-    
+        return {"tickets": [], "total": 0, "total_corpus": 0, "categories": []}
+
     with open(tickets_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     categories = sorted(list(set(t.get("issue_category", "general") for t in data if t.get("issue_category"))))
-    
+
     if category and category.lower() != "all":
         filtered = [t for t in data if t.get("issue_category") == category]
     else:
         filtered = data
-        
+
     return {
         "tickets": filtered[:limit],
         "total": len(filtered),
@@ -385,7 +494,11 @@ def list_tickets(
     }
 
 
-@router.post("/knowledge/search", summary="Interactive vector retrieval sandbox")
+@router.post(
+    "/knowledge/search",
+    response_model=KnowledgeSearchResponse,
+    summary="Interactive vector retrieval sandbox",
+)
 def search_knowledge(
     payload: Dict[str, Any],
     current_user: UserContext = Depends(get_current_user),
@@ -393,12 +506,12 @@ def search_knowledge(
     """Execute live semantic retrieval against pgvector / knowledge backbone."""
     import time
     from backend.retrieval.models import RetrievalQuery
-    from backend.retrieval.retriever import retrieve
+    from backend.retrieval.retriever import retrieve, RetrievalUnavailableError
 
     query_text = payload.get("query", "").strip()
     if not query_text:
         raise HTTPException(status_code=400, detail="Query text is required.")
-    
+
     top_k = int(payload.get("top_k", 5))
     score_threshold = float(payload.get("score_threshold", 0.0))
 
@@ -408,7 +521,10 @@ def search_knowledge(
         top_k=top_k,
         score_threshold=score_threshold,
     )
-    result = retrieve(rq)
+    try:
+        result = retrieve(rq)
+    except RetrievalUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=f"Knowledge base unavailable: {exc}")
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
     return {
@@ -435,7 +551,11 @@ def search_knowledge(
 # 5. Security & RBAC Governance Endpoints
 # ----------------------------------------------------------------------
 
-@router.get("/security/matrix", summary="Get complete RBAC role-permission matrix")
+@router.get(
+    "/security/matrix",
+    response_model=SecurityMatrixResponse,
+    summary="Get complete RBAC role-permission matrix",
+)
 def get_security_matrix(current_user: UserContext = Depends(get_current_user)) -> Dict[str, Any]:
     """Retrieve full RBAC permission matrix, action sensitivity, and governance rules."""
     from backend.security.models import UserRole
@@ -500,5 +620,3 @@ def get_security_matrix(current_user: UserContext = Depends(get_current_user)) -
             "hash_chain_immutability": True,
         },
     }
-
-

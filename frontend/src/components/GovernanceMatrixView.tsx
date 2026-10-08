@@ -157,12 +157,13 @@ export const GovernanceMatrixView: React.FC<GovernanceMatrixViewProps> = ({ acti
                   <tr key={act.action_type}>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{act.label}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {act.action_type}
-                      </div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                         {act.description}
                       </div>
+                      <details style={{ marginTop: '0.25rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <summary style={{ cursor: 'pointer' }}>Technical identifier</summary>
+                        <code>{act.action_type}</code>
+                      </details>
                     </td>
 
                     <td>

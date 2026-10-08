@@ -6,6 +6,7 @@ import { ApprovalGate } from './ApprovalGate';
 import { HashIcon, AlertTriangleIcon } from './Icons';
 import { LoadingState } from './ui';
 import type { WorkflowInstance } from '../types';
+import { formatDateTime, statusLabel } from '../types';
 
 export const DecisionView: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
@@ -148,7 +149,7 @@ export const DecisionView: React.FC = () => {
             </h2>
           </div>
           <span className="hash-pill">
-            Started: {new Date(workflow.started_at).toLocaleString()}
+            Started: {formatDateTime(workflow.started_at)}
           </span>
         </div>
 
@@ -161,7 +162,7 @@ export const DecisionView: React.FC = () => {
           </div>
           <div>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>Current Status</span>
-            <strong style={{ color: 'var(--text-primary)' }}>{workflow.status}</strong>
+            <strong style={{ color: 'var(--text-primary)' }}>{statusLabel(workflow.status)}</strong>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { AuditListItem, AuditTrail, ChainVerificationResult, Persona } from '../types';
+import { formatTime } from '../types';
 import { api } from '../api';
 import { CheckCircleIcon, RefreshIcon, LayersIcon, ShieldIcon, AlertTriangleIcon } from './Icons';
 import { getPlainStatusLabel } from './HomeView';
@@ -149,7 +150,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                     <span>Duration: {typeof item.duration_ms === 'number' ? item.duration_ms.toFixed(1) : '0.0'}ms</span>
-                    <span>{new Date(item.started_at).toLocaleTimeString()}</span>
+                    <span>{formatTime(item.started_at)}</span>
                   </div>
                 </button>
               );
@@ -292,7 +293,7 @@ export const AuditExplorer: React.FC<AuditExplorerProps> = ({
                           </span>
                         </div>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {new Date(evt.timestamp).toLocaleTimeString()}
+                          {formatTime(evt.timestamp)}
                         </span>
                       </div>
 

@@ -1,6 +1,12 @@
 /**
  * FlowMind AI - Frontend Data Types (Phase 5)
- * Strict typing aligned with FastAPI Pydantic schemas.
+ * Types aligned with the FastAPI/Pydantic backend schemas.
+ *
+ * Key mapping corrections (Task 3):
+ *   ExecutionRecord: uses executed_at / transaction_id / connector_name
+ *     (NOT timestamp / target_id / dispatched_to)
+ *   ReasoningOutput recommendation: uses rationale field
+ *   WorkflowStatus: matches the backend WorkflowStatus enum exactly
  */
 
 export type UserRole = 'support_agent' | 'team_lead' | 'manager' | 'admin';
@@ -38,7 +44,9 @@ export interface Recommendation {
   target_team: string;
   priority: string;
   parameters: Record<string, unknown>;
-  justification: string;
+  /** Backend field: rationale (not justification) */
+  rationale: string;
+  escalation_level?: string;
 }
 
 export interface ReasoningOutput {
@@ -67,19 +75,47 @@ export interface ApprovalRecord {
   authorized?: boolean;
 }
 
+/**
+ * ExecutionRecord – matches ExecutionResult from backend/connectors/base.py
+ *
+ * Backend sends: executed_at, transaction_id, connector_name
+ * (Previous hand-written type incorrectly used: timestamp, target_id, dispatched_to)
+ */
 export interface ExecutionRecord {
-  dispatched_to: string;
+  workflow_id: string;
+  /** Unique transaction identifier for the dispatched action */
+  transaction_id: string;
+  /** Name of the connector that executed the action */
+  connector_name: string;
   action_type: string;
-  target_id: string;
-  parameters: Record<string, unknown>;
   status: string;
-  timestamp: string;
-  response_payload: Record<string, unknown>;
+  details: Record<string, unknown>;
+  /** ISO-8601 timestamp when the action was executed */
+  executed_at: string;
+  latency_ms: number;
+  is_idempotent_replay: boolean;
 }
+
+/**
+ * WorkflowStatus – mirrors the backend WorkflowStatus enum exactly.
+ * Add safe fallback handling via statusLabel() utility below.
+ */
+export type WorkflowStatus =
+  | 'SUBMITTED'
+  | 'INVESTIGATING'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'MODIFIED'
+  | 'REJECTED'
+  | 'AUTO_EXECUTED'
+  | 'EXECUTING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'ABSTAINED';
 
 export interface WorkflowInstance {
   workflow_id: string;
-  status: 'PENDING_REASONING' | 'PENDING_APPROVAL' | 'APPROVED_EXECUTED' | 'REJECTED' | 'ABSTAINED' | 'FAILED';
+  status: WorkflowStatus;
   started_at: string;
   completed_at: string | null;
   request: {
@@ -111,8 +147,6 @@ export interface AuditTrail {
   started_at: string;
   completed_at: string | null;
   duration_ms: number;
-  // chain_events: real SHA-256 hash chain events from the backend.
-  // chain_verified is no longer stored here; it comes from the /audit/verify endpoint.
   chain_events?: AuditEvent[];
 }
 
@@ -246,4 +280,81 @@ export interface UserMeResponse {
   role: string;
   department: string;
 }
+
+export interface HealthCheckResponse {
+  status: 'ok' | 'degraded';
+  service: string;
+  version: string;
+  database: {
+    status: 'up' | 'down';
+    error?: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Shared utility functions (Task 3)
+// ---------------------------------------------------------------------------
+
+/**
+ * statusLabel – maps the backend WorkflowStatus enum value to a plain-language
+ * label for display in staff-facing screens.
+ *
+ * Unknown values return "In progress" as a safe fallback, never the raw code.
+ */
+export function statusLabel(status: string | null | undefined): string {
+  switch (status) {
+    case 'SUBMITTED':        return 'Received';
+    case 'INVESTIGATING':    return 'Investigating';
+    case 'PENDING_APPROVAL': return 'Awaiting review';
+    case 'APPROVED':         return 'Approved';
+    case 'MODIFIED':         return 'Modified';
+    case 'REJECTED':         return 'Turned down';
+    case 'AUTO_EXECUTED':    return 'Auto-handled';
+    case 'EXECUTING':        return 'Processing';
+    case 'COMPLETED':        return 'Sorted and finished';
+    case 'FAILED':           return 'Could not complete';
+    case 'ABSTAINED':        return 'No action taken';
+    default:                 return 'In progress';
+  }
+}
+
+/**
+ * formatDateTime – parse and format an ISO-8601 date string for display.
+ *
+ * Returns "—" for missing, null, undefined, or invalid input; never "Invalid Date".
+ */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString();
+}
+
+/**
+ * formatTime – like formatDateTime but shows time only.
+ * Returns "—" for invalid input.
+ */
+export function formatTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString();
+}
+
+/**
+ * getPlainActionLabel – maps raw action type codes (e.g. ISSUE_REFUND_RECOMMENDATION)
+ * to human-friendly phrases for support staff. Never exposes raw SCREAMING_SNAKE_CASE.
+ */
+export function getPlainActionLabel(actionType?: string | null): string {
+  if (!actionType) return 'Recommended action';
+  const norm = actionType.toUpperCase();
+  if (norm.includes('REFUND')) return 'Issue a refund recommendation';
+  if (norm.includes('TRANSFER')) return 'Transfer case to a specialist team';
+  if (norm.includes('ESCALATE')) return 'Escalate to higher-level review';
+  if (norm.includes('REQUEST')) return 'Ask customer for additional details';
+  if (norm.includes('RESOLVE')) return 'Send standard helpful resolution';
+  return actionType.replace(/_/g, ' ').toLowerCase();
+}
+
+export { getPolicyDisplayTitle, POLICY_TITLE_MAP } from './utils/policyTitles';
 

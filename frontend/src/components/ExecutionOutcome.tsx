@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ExecutionRecord } from '../types';
+import { formatDateTime, getPlainActionLabel } from '../types';
 import { CheckCircleIcon } from './Icons';
 
 interface ExecutionOutcomeProps {
@@ -45,28 +46,31 @@ export const ExecutionOutcome: React.FC<ExecutionOutcomeProps> = ({ execution })
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', fontSize: '0.775rem' }}>
         <div>
           <span style={{ color: 'var(--text-muted)' }}>Target System: </span>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{execution.dispatched_to}</span>
+          {/* connector_name is the correct backend field (was: dispatched_to) */}
+          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{execution.connector_name}</span>
         </div>
         <div>
-          <span style={{ color: 'var(--text-muted)' }}>Action Type: </span>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{execution.action_type}</span>
+          <span style={{ color: 'var(--text-muted)' }}>Action: </span>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{getPlainActionLabel(execution.action_type)}</span>
         </div>
         <div>
-          <span style={{ color: 'var(--text-muted)' }}>Generated ID: </span>
-          <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>{execution.target_id}</span>
+          <span style={{ color: 'var(--text-muted)' }}>Transaction ID: </span>
+          {/* transaction_id is the correct backend field (was: target_id) */}
+          <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>{execution.transaction_id}</span>
         </div>
         <div>
           <span style={{ color: 'var(--text-muted)' }}>Time Completed: </span>
+          {/* executed_at is the correct backend field (was: timestamp); formatTime guards against "Invalid Date" */}
           <span style={{ color: 'var(--text-secondary)' }}>
-            {new Date(execution.timestamp).toLocaleTimeString()}
+            {formatDateTime(execution.executed_at)}
           </span>
         </div>
       </div>
 
-      {execution.response_payload && Object.keys(execution.response_payload).length > 0 && (
+      {execution.details && Object.keys(execution.details).length > 0 && (
         <details style={{ marginTop: '0.25rem', fontSize: '0.725rem', color: 'var(--text-muted)' }}>
           <summary style={{ cursor: 'pointer', userSelect: 'none' }}>
-            See system response details
+            See technical details
           </summary>
           <pre
             style={{
@@ -80,7 +84,7 @@ export const ExecutionOutcome: React.FC<ExecutionOutcomeProps> = ({ execution })
               marginTop: '0.35rem',
             }}
           >
-            {JSON.stringify(execution.response_payload, null, 2)}
+            {JSON.stringify(execution.details, null, 2)}
           </pre>
         </details>
       )}
