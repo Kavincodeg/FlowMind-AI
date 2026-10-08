@@ -1,4 +1,4 @@
-"""
+﻿"""
 FlowMind AI - Retriever (Phase 1)
 
 Top-level retrieval interface:
@@ -23,6 +23,15 @@ from backend.retrieval.store import ann_search
 logger = logging.getLogger(__name__)
 
 
+class RetrievalUnavailableError(RuntimeError):
+    """
+    Raised when the vector database (pgvector) is unreachable or returns
+    an unexpected error during ANN search.  Callers must NOT silently swallow
+    this; the workflow must surface the failure rather than proceed on stale
+    or fake evidence.
+    """
+
+
 def retrieve(query: RetrievalQuery) -> RetrievalResult:
     """
     Execute a retrieval query and return ranked, cited chunks.
@@ -32,6 +41,10 @@ def retrieve(query: RetrievalQuery) -> RetrievalResult:
 
     Returns:
         RetrievalResult containing matched chunks with citations
+
+    Raises:
+        RetrievalUnavailableError: if the vector database is unreachable or
+            returns an error.  Never falls back to fake or cached data.
     """
     t0 = time.perf_counter()
 
@@ -42,7 +55,11 @@ def retrieve(query: RetrievalQuery) -> RetrievalResult:
     # 2. Build metadata filter dict for pgvector @> containment
     filter_dict = _build_filter(query.filters)
 
-    # 3. ANN search
+    # 3. ANN search – propagate any database error as RetrievalUnavailableError.
+    # IMPORTANT: do NOT catch this exception here and return mock data.
+    # The reasoning engine and orchestrator rely on seeing this failure so
+    # they can transition the workflow to FAILED and surface a clear banner
+    # to the user ("We can't reach the company knowledge base right now.").
     try:
         chunks = ann_search(
             query_vector=query_vec,
@@ -51,12 +68,13 @@ def retrieve(query: RetrievalQuery) -> RetrievalResult:
             score_threshold=query.score_threshold,
         )
     except Exception as exc:
-        logger.warning(
-            "Vector database unavailable (%s); falling back to mock_retrieve for offline operation.",
+        logger.error(
+            "Vector database unavailable during ANN search: %s",
             exc,
         )
-        from backend.retrieval.mock_retriever import mock_retrieve
-        return mock_retrieve(query)
+        raise RetrievalUnavailableError(
+            f"Vector database unreachable: {exc}"
+        ) from exc
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
     logger.info(

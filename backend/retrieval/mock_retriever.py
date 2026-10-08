@@ -1,4 +1,7 @@
-"""
+﻿"""
+# TEST-ONLY: This module must never be imported in production code.
+# Use only in tests and the evaluation harness, via explicit injection into
+# ReasoningEngine(retriever_fn=mock_retrieve).  See backend/tests/ for usage.
 FlowMind AI - Offline Mock Retriever (Phase 1 / Phase 2 / Phase 3)
 Provides deterministic, policy-grounded ticket and policy chunks for offline evaluation,
 unit testing, and automated workflows when pgvector / PostgreSQL is not connected.
@@ -147,3 +150,4 @@ def mock_retrieve(query: RetrievalQuery) -> RetrievalResult:
         filters_applied={"source_type": source_type} if source_type else {},
         retrieval_time_ms=10.0,
     )
+

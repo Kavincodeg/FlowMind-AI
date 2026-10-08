@@ -8,6 +8,8 @@ interface AppContextType {
   setActivePersona: (persona: Persona) => void;
   scenarios: DemonstrationScenario[];
   isBackendHealthy: boolean;
+  isDatabaseUp: boolean;
+  isDemoMode: boolean;
   currentWorkflow: WorkflowInstance | null;
   setCurrentWorkflow: (workflow: WorkflowInstance | null) => void;
   isLoadingInitial: boolean;
@@ -22,6 +24,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activePersona, setActivePersonaState] = useState<Persona | null>(null);
   const [scenarios, setScenarios] = useState<DemonstrationScenario[]>([]);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(true);
+  const [isDatabaseUp, setIsDatabaseUp] = useState<boolean>(true);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowInstance | null>(null);
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(true);
 
@@ -41,7 +45,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const init = async () => {
       try {
         const [healthRes, personasRes, scenariosRes] = await Promise.all([
-          api.checkHealth().catch(() => ({ status: 'error', service: 'FlowMind AI', version: '1.0.0' })),
+          api.checkHealth().catch(() => ({ status: 'error', service: 'FlowMind AI', version: '1.0.0', database: 'down' as const, demo_mode: false })),
           api.getPersonas().catch(() => []),
           api.getScenarios().catch(() => []),
         ]);
@@ -49,6 +53,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!isMounted) return;
 
         setIsBackendHealthy(healthRes.status === 'ok');
+        setIsDatabaseUp(healthRes.database === 'up');
+        setIsDemoMode(Boolean(healthRes.demo_mode));
         setPersonas(personasRes);
         setScenarios(scenariosRes);
 
@@ -94,6 +100,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActivePersona,
         scenarios,
         isBackendHealthy,
+        isDatabaseUp,
+        isDemoMode,
         currentWorkflow,
         setCurrentWorkflow,
         isLoadingInitial,
