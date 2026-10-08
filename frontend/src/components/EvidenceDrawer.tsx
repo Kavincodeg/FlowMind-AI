@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Citation } from '../types';
+import { getPolicyDisplayTitle } from '../utils/policyTitles';
 import { CheckCircleIcon, AlertTriangleIcon } from './Icons';
 
 interface EvidenceDrawerProps {
@@ -49,11 +50,8 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
           const textContent = c.text || (rawC.snippet as string) || (rawC.relevance_reason as string) || '';
           const isExpanded = expandedIndex === idx;
 
-          // Format clean display name for policies or tickets
-          const friendlySource = sourceName
-            .replace(/\.md$/i, '')
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (l) => l.toUpperCase());
+          // Format clean display name for policies or tickets using shared canonical mapping
+          const friendlySource = getPolicyDisplayTitle(sourceName);
 
           const simValue = typeof c.score === 'number' ? c.score.toFixed(3) : '0.880';
 

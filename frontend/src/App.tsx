@@ -30,6 +30,8 @@ const AppLayout: React.FC = () => {
     setActivePersona,
     scenarios,
     isBackendHealthy,
+    isDatabaseUp,
+    isDemoMode,
     currentWorkflow,
     setCurrentWorkflow,
     isLoadingInitial,
@@ -49,6 +51,50 @@ const AppLayout: React.FC = () => {
         onSelectPersona={setActivePersona}
         isBackendHealthy={isBackendHealthy}
       />
+
+      {/* Task 1: Plain banner when vector database / knowledge base is unreachable */}
+      {!isDatabaseUp && (
+        <div
+          role="alert"
+          id="database-down-banner"
+          style={{
+            backgroundColor: '#fee2e2',
+            color: '#991b1b',
+            borderBottom: '1px solid #f87171',
+            padding: '0.75rem 1.5rem',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <span>⚠️</span>
+          <span>We can't reach the company knowledge base right now. Cases can't be investigated until this is fixed.</span>
+        </div>
+      )}
+
+      {/* Task 2: Visible warning banner when DEMO_MODE=true */}
+      {isDemoMode && (
+        <div
+          role="status"
+          id="demo-mode-banner"
+          style={{
+            backgroundColor: '#fef3c7',
+            color: '#92400e',
+            borderBottom: '1px solid #fcd34d',
+            padding: '0.5rem 1.5rem',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <span>ℹ️</span>
+          <span>Demo accounts are enabled. Do not use with real customer data.</span>
+        </div>
+      )}
 
       {/* Primary Navigation Tabs with Real Routing */}
       <nav className="tab-navigation" aria-label="Main Navigation">
@@ -301,9 +347,6 @@ const AppLayout: React.FC = () => {
           <strong>FlowMind AI</strong> — Everyday Customer Support Assistant &amp; Safe Action Review
         </div>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <span>110 Unit Tests Passing</span>
-          <span>9 Integration Tests Passing</span>
-          <span>19 Playwright Tests Passing</span>
           <span>SHA-256 Hash Chain Active</span>
           <span>Server-Side RBAC Enforced</span>
         </div>
