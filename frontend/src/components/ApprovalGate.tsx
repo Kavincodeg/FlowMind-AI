@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { WorkflowInstance, Persona } from '../types';
+import { statusLabel } from '../types';
 import { api, ApiError } from '../api';
 import { ExecutionOutcome } from './ExecutionOutcome';
 import { ShieldIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon, LockIcon } from './Icons';
@@ -116,14 +117,14 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
           }`}
         >
           {isExecuted
-            ? 'Sorted and finished (APPROVED_EXECUTED)'
+            ? 'Sorted and finished'
             : isPending
             ? 'Waiting for an OK'
             : isRejected
-            ? 'Turned down (REJECTED)'
+            ? 'Turned down'
             : isAbstained
             ? 'No guess made'
-            : workflow.status}
+            : statusLabel(workflow.status)}
         </span>
       </div>
 
