@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ActionType(str, Enum):
@@ -56,12 +56,33 @@ class EvidenceCitation(BaseModel):
     chunk_index: int = 0
     snippet: str = ""
     relevance_reason: str = ""
+    policy_version: Optional[str] = None
+    stored_citation: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _compute_stored_citation(self) -> "EvidenceCitation":
+        if self.source_type == "policy" and not self.stored_citation:
+            from backend.retrieval.ingestion import POLICY_TITLE_MAP
+            title = POLICY_TITLE_MAP.get(
+                self.source_id,
+                self.source_id.replace(".md", "").replace("_", " ").title()
+            )
+            ver_str = f" v{self.policy_version}" if self.policy_version else ""
+            self.stored_citation = f"{title}{ver_str}"
+        elif self.source_type == "ticket" and not self.stored_citation:
+            self.stored_citation = f"Ticket {self.source_id}"
+        return self
 
     @property
     def citation_label(self) -> str:
         if self.source_type == "ticket":
             return f"[Ticket {self.source_id}, chunk {self.chunk_index}]"
-        return f"[Policy: {self.source_id}, chunk {self.chunk_index}]"
+        ver_str = f" v{self.policy_version}" if self.policy_version else ""
+        return f"[Policy: {self.source_id}{ver_str}, chunk {self.chunk_index}]"
+
+    @property
+    def citation(self) -> str:
+        return self.stored_citation or self.citation_label
 
 
 class NextBestAction(BaseModel):

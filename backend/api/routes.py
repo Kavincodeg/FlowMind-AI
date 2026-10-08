@@ -412,6 +412,8 @@ POLICY_TITLE_MAP: Dict[str, str] = {
     "refund_policy.md": "Refund Policy",
     "sla_policy.md": "SLA Policy",
     "team_routing.md": "Team Routing Guide",
+    "customer_query_handling_policy.md": "Customer Query Handling Policy",
+    "approval_authority_matrix.md": "Approval Authority Matrix",
 }
 
 
@@ -442,7 +444,7 @@ def list_policies(current_user: UserContext = Depends(get_current_user)) -> List
     """Retrieve full text of enterprise governance policies from disk."""
     import os as _os
     from pathlib import Path
-    policy_dir = Path(__file__).parent.parent / "data" / "synthetic" / "policies"
+    policy_dir = Path(__file__).parent.parent / "data" / "policies"
     policies = []
     if _os.path.exists(str(policy_dir)):
         for fname in sorted(_os.listdir(str(policy_dir))):

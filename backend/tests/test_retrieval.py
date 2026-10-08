@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Phase 1 Retrieval Tests
 
 Tests:
@@ -32,7 +32,7 @@ import pytest
 ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = ROOT / "backend" / "data"
 SYNTHETIC_DIR = DATA_DIR / "synthetic"
-POLICIES_DIR = SYNTHETIC_DIR / "policies"
+POLICIES_DIR = DATA_DIR / "policies"
 TICKETS_FILE = SYNTHETIC_DIR / "tickets.json"
 TEST_QUERIES_FILE = DATA_DIR / "test_queries.json"
 
@@ -143,10 +143,14 @@ class TestTicketLoading:
 
 
 class TestPolicyLoading:
-    def test_loads_5_policies(self):
+    def test_loads_7_policies(self):
         from backend.retrieval.ingestion import load_policies
         docs, chunks = load_policies(POLICIES_DIR)
-        assert len(docs) == 5, f"Expected 5 policy docs, got {len(docs)}"
+        assert len(docs) == 7, f"Expected 7 policy docs, got {len(docs)}"
+
+    def test_loads_5_policies(self):
+        """Backward compatibility alias for the legacy test name."""
+        self.test_loads_7_policies()
 
     def test_policy_source_ids(self):
         from backend.retrieval.ingestion import load_policies
@@ -154,7 +158,8 @@ class TestPolicyLoading:
         source_ids = {d.source_id for d in docs}
         expected_files = {
             "escalation_policy.md", "sla_policy.md",
-            "team_routing.md", "refund_policy.md", "data_handling_policy.md"
+            "team_routing.md", "refund_policy.md", "data_handling_policy.md",
+            "customer_query_handling_policy.md", "approval_authority_matrix.md"
         }
         assert source_ids == expected_files
 
@@ -164,6 +169,39 @@ class TestPolicyLoading:
         for c in chunks:
             assert c.metadata["source_type"] == "policy"
             assert c.metadata["source_id"].endswith(".md")
+            assert "policy_version" in c.metadata
+            assert "effective_date" in c.metadata
+
+    def test_every_policy_has_document_control(self):
+        from backend.retrieval.ingestion import parse_document_control
+        md_files = sorted(POLICIES_DIR.glob("*.md"))
+        assert len(md_files) == 7
+        for f in md_files:
+            text = f.read_text(encoding="utf-8")
+            ctrl = parse_document_control(text)
+            assert "version" in ctrl, f"{f.name} missing Version in Document Control"
+            assert ctrl["version"] == "1.0", f"{f.name} has unexpected version {ctrl.get('version')}"
+            assert "effective_date" in ctrl, f"{f.name} missing Effective date in Document Control"
+            assert ctrl["effective_date"] == "2026-10-08", f"{f.name} has unexpected effective date"
+            assert "owner" in ctrl, f"{f.name} missing Owner in Document Control"
+            assert ctrl["owner"] == "Head of Support", f"{f.name} has unexpected owner"
+
+    def test_policy_citation_carries_version(self):
+        from backend.retrieval.models import RetrievedChunk
+        import uuid
+        c = RetrievedChunk(
+            chunk_id=uuid.uuid4(),
+            doc_id=uuid.uuid4(),
+            source_type="policy",
+            source_id="sla_policy.md",
+            chunk_index=0,
+            content="test chunk",
+            score=0.91,
+            metadata={"policy_version": "1.0", "effective_date": "2026-10-08"}
+        )
+        assert "sla_policy.md" in c.citation
+        assert "v1.0" in c.citation
+        assert "SLA Policy v1.0" in c.stored_citation
 
 
 # ============================================================

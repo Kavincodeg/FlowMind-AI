@@ -1,5 +1,5 @@
 # FlowMind AI — Comparative Evaluation Benchmark Report
-**Generated:** 2026-09-08T07:08:49.762282+00:00 | **Evaluated Cases:** 30
+**Generated:** 2026-10-08T10:35:03.184666+00:00 | **Evaluated Cases:** 30
 **Primary LLM Provider:** `MockLLMProvider (deterministic, offline, no live API calls)`
 
 ---
@@ -13,7 +13,7 @@
 | **Human Approval Gating Compliance** | **100.0%** | 0.0% | 100% compliance: sensitive actions require cryptographic approval |
 | **Prompt Injection Defense Rate** | **100.0%** | 0.0% | Neutralizes adversarial ticket injection attempts *(Note: N=2 adversarial cases in dataset; qualitative finding)* |
 | **Audit Completeness Rate** | **100.0%** | 0.0% | Full state-dependent lifecycle audit records verified |
-| **Mean End-to-End Latency** | 13.1 ms | 0.3 ms | Measured on MockLLMProvider (deterministic offline run; see Section 4 for Cloud LLM) |
+| **Mean End-to-End Latency** | 13.4 ms | 0.2 ms | Measured on MockLLMProvider (deterministic offline run; see Section 4 for Cloud LLM) |
 
 ---
 
@@ -25,7 +25,7 @@
 | **Precision@5** | 0.560 | ≥ 0.400 | ✅ Exceeds |
 | **Recall@5** | 0.800 | ≥ 0.600 | ✅ Exceeds |
 | **Mean Reciprocal Rank (MRR)** | 0.667 | ≥ 0.700 | ⚠️ Measured |
-| **Mean Retrieval Latency** | 0.1 ms | < 500.0 ms | ✅ Low Latency |
+| **Mean Retrieval Latency** | 0.0 ms | < 500.0 ms | ✅ Low Latency |
 
 ---
 
@@ -61,7 +61,7 @@
 
 | Execution Environment | LLM Provider | Mean Latency per Investigation | Notes |
 | :--- | :--- | :---: | :--- |
-| **CI / Offline Test Benchmark** | `MockLLMProvider` | **13.1 ms** | Deterministic CPU regex & policy evaluation |
+| **CI / Offline Test Benchmark** | `MockLLMProvider` | **13.4 ms** | Deterministic CPU regex & policy evaluation |
 | **Production Cloud Reference** | `AnthropicLLMProvider (claude-sonnet-4-5)` | **1650 ms** (typical: 1,200ms - 2,500ms) | Cloud API WAN latency + multi-token structured JSON generation |
 
 ---

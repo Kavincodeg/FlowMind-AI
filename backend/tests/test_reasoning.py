@@ -105,6 +105,10 @@ class TestReasoningModels:
         p_cit = EvidenceCitation(source_type="policy", source_id="escalation_policy.md", chunk_index=0)
         assert p_cit.citation_label == "[Policy: escalation_policy.md, chunk 0]"
 
+        p_cit_v = EvidenceCitation(source_type="policy", source_id="sla_policy.md", chunk_index=0, policy_version="1.0")
+        assert p_cit_v.citation_label == "[Policy: sla_policy.md v1.0, chunk 0]"
+        assert p_cit_v.stored_citation == "SLA Policy v1.0"
+
     def test_next_best_action_defaults(self):
         action = NextBestAction(
             action_type=ActionType.ESCALATE_TICKET,

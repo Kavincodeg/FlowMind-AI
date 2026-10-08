@@ -1,7 +1,16 @@
-﻿# Team Routing Policy
+# Team Routing Policy
+
+## Document Control
+
+| Field | Value |
+|---|---|
+| Version | 1.0 |
+| Effective date | 2026-10-08 |
+| Owner | Head of Support |
+| Review cycle | Every 6 months |
 
 ## Purpose
-This policy defines which support team is responsible for handling tickets based on issue category, and the routing rules for escalated tickets.
+This policy defines which support team is responsible for handling tickets based on issue category, and the routing rules for escalated tickets. Role names and approval authority are defined in the Approval Authority Matrix.
 
 ## Standard Routing (Tier 1)
 
@@ -22,7 +31,7 @@ This policy defines which support team is responsible for handling tickets based
 ## Escalation Routing
 
 When a ticket is escalated:
-- L1 Escalation: Route to Senior Agent within the same team.
+- L1 Escalation: Route to Team Lead within the same team.
 - L2 Escalation: Route to Team Manager of the primary team.
 - L3 Escalation: Route to Department Head — requires notification to Customer Success Director.
 - L4 Escalation: Executive Team — requires VP Customer Experience sign-off.

@@ -369,8 +369,9 @@ class ReasoningEngine:
     def _collect_valid_chunk_keys(
         self, ticket_result: RetrievalResult, policy_result: RetrievalResult
     ) -> Set[Tuple[str, str, int]]:
-        """Collect the set of actually retrieved (source_type, source_id, chunk_index)."""
+        """Collect the set of actually retrieved (source_type, source_id, chunk_index) and version mappings."""
         valid = set()
+        self._last_policy_versions: Dict[Tuple[str, str, int], str] = {}
         for c in ticket_result.chunks:
             valid.add((c.source_type, c.source_id, c.chunk_index))
             # Also allow fuzzy chunk match on source_id alone
@@ -378,12 +379,26 @@ class ReasoningEngine:
         for c in policy_result.chunks:
             valid.add((c.source_type, c.source_id, c.chunk_index))
             valid.add((c.source_type, c.source_id, -1))
+            ver = c.metadata.get("policy_version")
+            if ver:
+                self._last_policy_versions[(c.source_type, c.source_id, c.chunk_index)] = str(ver)
+                self._last_policy_versions[(c.source_type, c.source_id, -1)] = str(ver)
         return valid
 
     def _verify_citations(
-        self, citations_raw: List[Dict[str, Any]], valid_keys: Set[Tuple[str, str, int]]
+        self,
+        citations_raw: List[Dict[str, Any]],
+        valid_keys: Any,
+        version_map: Optional[Dict[Tuple[str, str, int], str]] = None,
     ) -> Tuple[List[EvidenceCitation], Set[str]]:
         """Filter out hallucinated citations and return verified citations + stripped source IDs."""
+        if isinstance(valid_keys, tuple):
+            valid_keys, extra_v_map = valid_keys
+            if not version_map:
+                version_map = extra_v_map
+        if version_map is None:
+            version_map = getattr(self, "_last_policy_versions", {})
+
         verified: List[EvidenceCitation] = []
         stripped_source_ids: Set[str] = set()
 
@@ -394,6 +409,12 @@ class ReasoningEngine:
 
             # Verify presence in valid retrieved set (exact or by source_id)
             if (source_type, source_id, chunk_index) in valid_keys or (source_type, source_id, -1) in valid_keys:
+                policy_version = c.get("policy_version")
+                if not policy_version and version_map:
+                    policy_version = (
+                        version_map.get((source_type, source_id, chunk_index))
+                        or version_map.get((source_type, source_id, -1))
+                    )
                 verified.append(
                     EvidenceCitation(
                         source_type=source_type,
@@ -401,6 +422,7 @@ class ReasoningEngine:
                         chunk_index=chunk_index,
                         snippet=c.get("snippet", ""),
                         relevance_reason=c.get("relevance_reason", ""),
+                        policy_version=policy_version,
                     )
                 )
             else:

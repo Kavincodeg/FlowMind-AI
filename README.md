@@ -29,7 +29,7 @@ Complaint Investigation Request
 
 ### Phase 1: Retrieval Foundation
 The knowledge backbone indexes customer support history and enterprise policies:
-- **Ingestion & Chunking**: Sliding-window chunker with metadata preservation for 150 historical support tickets across 5 categories; paragraph-based chunker for 5 structured enterprise policies.
+- **Ingestion & Chunking**: Sliding-window chunker with metadata preservation for 150 historical support tickets across 5 categories; paragraph-based chunker for 7 structured enterprise policies in `backend/data/policies/`.
 - **Embedding**: Local `all-MiniLM-L6-v2` sentence-transformer generating 384-dimensional normalized vector embeddings.
 - **Vector Store**: PostgreSQL 16 with the `pgvector` extension utilizing HNSW cosine index and JSONB metadata filters.
 - **Retrieval Engine**: Top-$K$ semantic similarity search with score thresholding, structured citations, and context assembly.
@@ -101,9 +101,9 @@ FlowMind-AI/
 │   │   ├── base.py           ← Connector interface & execution results
 │   │   └── mock_connector.py ← Mock enterprise connector with latency simulation
 │   ├── data/                 ← Ground-truth datasets & test collections
+│   │   ├── policies/         ← 7 enterprise markdown policy documents
 │   │   ├── synthetic/
-│   │   │   ├── tickets.json  ← 150 support tickets across 5 categories
-│   │   │   └── policies/     ← 5 enterprise markdown policy documents
+│   │   │   └── tickets.json  ← 150 support tickets across 5 categories
 │   │   └── test_queries.json ← 25 retrieval benchmark queries
 │   ├── db/
 │   │   └── schema.sql        ← PostgreSQL schema (documents, chunks, audit_log)

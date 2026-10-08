@@ -1,4 +1,13 @@
-﻿# Refund Policy
+# Refund Policy
+
+## Document Control
+
+| Field | Value |
+|---|---|
+| Version | 1.0 |
+| Effective date | 2026-10-08 |
+| Owner | Head of Support |
+| Review cycle | Every 6 months |
 
 ## Purpose
 This policy outlines the conditions under which customer refunds are approved, the approval process, and the limits of refund authority at each support level.
@@ -27,8 +36,10 @@ A refund MAY be approved when ALL of the following are true:
 | Up to $50 | Tier 1 Agent |
 | $51 - $200 | Team Lead sign-off |
 | $201 - $500 | Team Manager approval |
-| $501 - $1000 | Finance & Compliance review |
+| $501 - $1000 | Finance Reviewer approval |
 | Over $1000 | VP Finance approval |
+
+Amounts are the total refunded to one customer for one case. Splitting a refund into smaller parts to stay under a limit is prohibited. Refunds above $500 are approved by Finance only. Credits and goodwill payments follow the same limits. Who may approve each amount is defined in the Approval Authority Matrix.
 
 ## Refund Process
 

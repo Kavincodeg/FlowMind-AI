@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 FlowMind AI - Ingestion CLI (Phase 1)
 
@@ -38,8 +38,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ingest_cli")
 
-DATA_DIR = Path(__file__).parent / "backend" / "data" / "synthetic"
-TICKETS_FILE = DATA_DIR / "tickets.json"
+DATA_DIR = Path(__file__).parent / "backend" / "data"
+TICKETS_FILE = DATA_DIR / "synthetic" / "tickets.json"
 POLICIES_DIR = DATA_DIR / "policies"
 
 

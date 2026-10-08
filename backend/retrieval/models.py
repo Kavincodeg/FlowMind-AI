@@ -36,6 +36,9 @@ class DocumentMetadata(BaseModel):
     # Policy fields
     filename: Optional[str] = None
     policy_category: Optional[str] = None
+    policy_version: Optional[str] = None
+    effective_date: Optional[str] = None
+    owner: Optional[str] = None
 
 
 class Document(BaseModel):
@@ -107,7 +110,22 @@ class RetrievedChunk(BaseModel):
     def citation(self) -> str:
         if self.source_type == "ticket":
             return f"[Ticket {self.source_id}, chunk {self.chunk_index}]"
-        return f"[Policy: {self.source_id}, chunk {self.chunk_index}]"
+        version = self.metadata.get("policy_version")
+        ver_str = f" v{version}" if version else ""
+        return f"[Policy: {self.source_id}{ver_str}, chunk {self.chunk_index}]"
+
+    @property
+    def stored_citation(self) -> str:
+        if self.source_type == "ticket":
+            return f"Ticket {self.source_id}"
+        from backend.retrieval.ingestion import POLICY_TITLE_MAP
+        title = POLICY_TITLE_MAP.get(
+            self.source_id,
+            self.source_id.replace(".md", "").replace("_", " ").title()
+        )
+        version = self.metadata.get("policy_version")
+        ver_str = f" v{version}" if version else ""
+        return f"{title}{ver_str}"
 
 
 class RetrievalResult(BaseModel):

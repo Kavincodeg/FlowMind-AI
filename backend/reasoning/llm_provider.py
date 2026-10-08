@@ -268,19 +268,22 @@ class MockLLMProvider(LLMProvider):
 
     def _extract_policy_citations(self, prompt: str) -> List[Dict[str, Any]]:
         citations = []
-        matches = re.findall(r"\[Policy:\s*([A-Za-z0-9_\-\.]+),\s*chunk\s*(\d+)\]", prompt)
+        matches = re.findall(r"\[Policy:\s*([A-Za-z0-9_\-\.]+)(?:\s+v([\d\.]+))?,\s*chunk\s*(\d+)\]", prompt)
         seen = set()
-        for p_id, c_idx in matches:
+        for p_id, p_ver, c_idx in matches:
             key = (p_id, int(c_idx))
             if key not in seen:
                 seen.add(key)
-                citations.append({
+                cit_dict: Dict[str, Any] = {
                     "source_type": "policy",
                     "source_id": p_id,
                     "chunk_index": int(c_idx),
                     "snippet": f"Policy document {p_id}",
                     "relevance_reason": "Defines governing escalation triggers and routing policies",
-                })
+                }
+                if p_ver:
+                    cit_dict["policy_version"] = p_ver
+                citations.append(cit_dict)
         return citations
 
     def _determine_category(self, request_text: str, ticket_text: str) -> str:

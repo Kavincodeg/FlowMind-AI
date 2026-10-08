@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Retriever (Phase 1)
 
 Top-level retrieval interface:
@@ -17,8 +17,8 @@ import time
 from typing import Any, Dict, Optional
 
 from backend.retrieval.embedder import get_embedder
+from backend.retrieval import store
 from backend.retrieval.models import MetadataFilter, RetrievalQuery, RetrievalResult
-from backend.retrieval.store import ann_search
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def retrieve(query: RetrievalQuery) -> RetrievalResult:
     # they can transition the workflow to FAILED and surface a clear banner
     # to the user ("We can't reach the company knowledge base right now.").
     try:
-        chunks = ann_search(
+        chunks = store.ann_search(
             query_vector=query_vec,
             top_k=query.top_k,
             metadata_filter=filter_dict if filter_dict else None,

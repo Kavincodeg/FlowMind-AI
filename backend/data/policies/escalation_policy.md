@@ -1,4 +1,13 @@
-﻿# Escalation Policy
+# Escalation Policy
+
+## Document Control
+
+| Field | Value |
+|---|---|
+| Version | 1.0 |
+| Effective date | 2026-10-08 |
+| Owner | Head of Support |
+| Review cycle | Every 6 months |
 
 ## Purpose
 This policy defines the criteria and process for escalating customer complaints to the appropriate team when standard support cannot resolve the issue within agreed SLA boundaries.
@@ -18,10 +27,12 @@ A ticket MUST be escalated when ANY of the following conditions are met:
 
 | Level | Description | Response Time |
 |---|---|---|
-| L1 | Senior Support Agent | Within 4 hours |
+| L1 | Team Lead | Within 4 hours |
 | L2 | Team Manager | Within 2 hours |
 | L3 | Department Head | Within 1 hour |
 | L4 | Executive Team | Immediate |
+
+Who may approve an escalation to each level is defined in the Approval Authority Matrix.
 
 High-priority tickets with SLA breach go directly to L2. Repeat offenders (4+ tickets) go to L2. Legal threats go to L3.
 
@@ -30,12 +41,13 @@ High-priority tickets with SLA breach go directly to L2. Repeat offenders (4+ ti
 1. Agent identifies escalation trigger.
 2. Agent documents reason in the ticket history note.
 3. System (or agent) routes to the appropriate team using the Team Routing Policy.
-4. Escalation is logged with: timestamp, trigger reason, agent ID, target team, approval status.
-5. Customer is notified of escalation within 30 minutes.
-6. Escalated ticket must be acknowledged by receiving team within the Level response time.
+4. An escalation recommended by FlowMind MUST receive human approval before it is carried out.
+5. Escalation is logged with: timestamp, trigger reason, agent ID, target team, approval status.
+6. Customer is notified of escalation within 30 minutes.
+7. Escalated ticket must be acknowledged by receiving team within the Level response time.
 
 ## Prohibited Actions
 
 - Agents MUST NOT close a ticket without resolution if an escalation trigger is active.
-- Escalation decisions CANNOT be reversed without L2 approval.
+- An escalation can be reversed only with Team Manager (L2) or higher approval, as defined in the Approval Authority Matrix.
 - No ticket may be escalated and de-escalated more than twice.

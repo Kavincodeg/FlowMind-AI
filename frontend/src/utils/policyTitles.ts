@@ -15,6 +15,10 @@ export const POLICY_TITLE_MAP: Record<string, string> = {
   'sla_policy': 'SLA Policy',
   'team_routing.md': 'Team Routing Guide',
   'team_routing': 'Team Routing Guide',
+  'customer_query_handling_policy.md': 'Customer Query Handling Policy',
+  'customer_query_handling_policy': 'Customer Query Handling Policy',
+  'approval_authority_matrix.md': 'Approval Authority Matrix',
+  'approval_authority_matrix': 'Approval Authority Matrix',
 };
 
 export function getPolicyDisplayTitle(sourceOrFilename: string | null | undefined): string {

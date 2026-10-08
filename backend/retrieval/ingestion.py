@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Ingestion & Chunking (Phase 1)
 
 Loads source documents (tickets JSON, policy markdown files) and
@@ -221,8 +221,44 @@ def load_tickets(tickets_path: Path) -> Tuple[List[Document], List[Chunk]]:
 
 
 # ------------------------------------------------------------------
-# Policy ingestion
+# Policy ingestion & Document Control parsing
 # ------------------------------------------------------------------
+
+POLICY_TITLE_MAP: dict[str, str] = {
+    "data_handling_policy.md": "Data Handling Policy",
+    "escalation_policy.md": "Escalation Policy",
+    "refund_policy.md": "Refund Policy",
+    "sla_policy.md": "SLA Policy",
+    "team_routing.md": "Team Routing Guide",
+    "customer_query_handling_policy.md": "Customer Query Handling Policy",
+    "approval_authority_matrix.md": "Approval Authority Matrix",
+}
+
+
+def parse_document_control(text: str) -> dict[str, str]:
+    """Parse fields from the '## Document Control' markdown table."""
+    control_info: dict[str, str] = {}
+    doc_control_match = re.search(
+        r"##\s+Document Control\s*\n+((?:\|[^\n]+\|\s*\n)+)",
+        text,
+        re.IGNORECASE,
+    )
+    if doc_control_match:
+        table_text = doc_control_match.group(1)
+        for line in table_text.splitlines():
+            line = line.strip()
+            if not line.startswith("|") or "---" in line:
+                continue
+            parts = [p.strip() for p in line.split("|") if p.strip()]
+            if len(parts) >= 2:
+                field_name = parts[0].strip().lower()
+                val = parts[1].strip()
+                if field_name == "field":
+                    continue
+                norm_key = field_name.replace(" ", "_")
+                control_info[norm_key] = val
+    return control_info
+
 
 def load_policies(policies_dir: Path) -> Tuple[List[Document], List[Chunk]]:
     """
@@ -243,15 +279,27 @@ def load_policies(policies_dir: Path) -> Tuple[List[Document], List[Chunk]]:
         filename = md_file.name
         text = md_file.read_text(encoding="utf-8")
 
-        # Infer a human title from first H1
-        title_match = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
-        title = title_match.group(1).strip() if title_match else filename
+        # Parse Document Control table
+        doc_ctrl = parse_document_control(text)
+        version = doc_ctrl.get("version", "1.0")
+        effective_date = doc_ctrl.get("effective_date", "2026-10-08")
+        owner = doc_ctrl.get("owner", "Head of Support")
+
+        # Infer a human title from POLICY_TITLE_MAP or first H1
+        if filename in POLICY_TITLE_MAP:
+            title = POLICY_TITLE_MAP[filename]
+        else:
+            title_match = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
+            title = title_match.group(1).strip() if title_match else filename
 
         meta = DocumentMetadata(
             source_type="policy",
             source_id=filename,
             filename=filename,
             policy_category=filename.replace("_policy.md", "").replace("_", " "),
+            policy_version=version,
+            effective_date=effective_date,
+            owner=owner,
         )
 
         doc = Document(
@@ -266,6 +314,9 @@ def load_policies(policies_dir: Path) -> Tuple[List[Document], List[Chunk]]:
             "source_type": "policy",
             "source_id": filename,
             "policy_category": meta.policy_category,
+            "policy_version": version,
+            "effective_date": effective_date,
+            "owner": owner,
         }
 
         chunks = _paragraph_chunks(text, chunk_meta)
@@ -274,3 +325,4 @@ def load_policies(policies_dir: Path) -> Tuple[List[Document], List[Chunk]]:
 
     logger.info("Loaded %d policy files → %d chunks", len(documents), len(all_chunks))
     return documents, all_chunks
+
