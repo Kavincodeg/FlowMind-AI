@@ -197,6 +197,7 @@ export interface BenchmarkResultResponse {
   timestamp: string;
   dataset_size: number;
   llm_provider: string;
+  retrieval_source?: string;
   retrieval_metrics: RetrievalMetrics;
   comparative_summary: BenchmarkSummary;
   real_provider_latency_sample?: {
@@ -209,10 +210,16 @@ export interface BenchmarkResultResponse {
 }
 
 export interface RetrievalMetrics {
-  precision_at_k: number;
-  recall_at_k: number;
+  retrieval_source?: string;
+  precision_at_3?: number;
+  precision_at_5?: number;
+  precision_at_k?: number;
+  recall_at_5?: number;
+  recall_at_k?: number;
   mrr: number;
-  queries_evaluated: number;
+  mean_latency_ms?: number;
+  total_queries?: number;
+  queries_evaluated?: number;
 }
 
 export interface PolicyDocument {

@@ -375,7 +375,31 @@ async def get_benchmark_results(
     from backend.evaluation.harness import EvaluationHarness
 
     if _cached_benchmark_result is None or refresh:
-        harness = EvaluationHarness()
+        from backend.evaluation.reporter import DEFAULT_RESULTS_DIR
+        report_json_path = DEFAULT_RESULTS_DIR / "benchmark_report.json"
+        if report_json_path.exists() and not refresh:
+            import json
+            with open(report_json_path, "r", encoding="utf-8") as f:
+                _cached_benchmark_result = json.load(f)
+                return _cached_benchmark_result
+
+        from backend.retrieval.store import _get_dsn
+        import psycopg2
+        db_up = False
+        try:
+            conn = psycopg2.connect(_get_dsn())
+            conn.close()
+            db_up = True
+        except Exception:
+            pass
+
+        if db_up:
+            from backend.retrieval.retriever import retrieve
+            harness = EvaluationHarness(retriever_fn=retrieve, retrieval_source="pgvector")
+        else:
+            from backend.retrieval.mock_retriever import mock_retrieve
+            harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
+
         res = harness.run_comparative_benchmark()
         _cached_benchmark_result = res.model_dump()
 
@@ -394,7 +418,23 @@ async def get_retrieval_metrics(
     Retrieve Information Retrieval quality metrics (Precision@K, Recall@K, MRR).
     """
     from backend.evaluation.harness import EvaluationHarness
-    harness = EvaluationHarness()
+    from backend.retrieval.store import _get_dsn
+    import psycopg2
+    db_up = False
+    try:
+        conn = psycopg2.connect(_get_dsn())
+        conn.close()
+        db_up = True
+    except Exception:
+        pass
+
+    if db_up:
+        from backend.retrieval.retriever import retrieve
+        harness = EvaluationHarness(retriever_fn=retrieve, retrieval_source="pgvector")
+    else:
+        from backend.retrieval.mock_retriever import mock_retrieve
+        harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
+
     rm = harness.run_retrieval_benchmark()
     return rm.model_dump()
 

@@ -59,6 +59,9 @@ def generate_survey_fixture_for_testing(
     return {"total_responses": len(survey_entries), "entries": survey_entries}
 
 
+from backend.retrieval.mock_retriever import mock_retrieve
+
+
 class TestEvaluationDatasetIntegrity:
     """Validate completeness and schema conformance of benchmark datasets."""
 
@@ -95,7 +98,7 @@ class TestMetricsCalculation:
     """Test standard evaluation metrics math."""
 
     def test_retrieval_metrics_calculation(self):
-        harness = EvaluationHarness()
+        harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
         mock_queries = [
             {
                 "query_id": "Q1",
@@ -118,6 +121,7 @@ class TestMetricsCalculation:
         assert 0.0 <= metrics.precision_at_5 <= 1.0
         assert 0.0 <= metrics.recall_at_5 <= 1.0
         assert 0.0 <= metrics.mrr <= 1.0
+        assert metrics.retrieval_source == "mock"
 
     def test_survey_fixture_parsing(self):
         """Verify the test-only survey helper operates as an isolated fixture."""
@@ -138,7 +142,7 @@ class TestStructuralInvariants:
 
     @pytest.fixture(autouse=True)
     def setup_harness(self):
-        self.harness = EvaluationHarness()
+        self.harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
         with open(COMPLAINT_CASES_FILE, "r", encoding="utf-8") as f:
             self.cases = json.load(f)
 
@@ -182,7 +186,7 @@ class TestEvaluationReporter:
     """Verify Markdown and JSON report generation."""
 
     def test_reporter_produces_valid_markdown_and_json(self, tmp_path):
-        harness = EvaluationHarness()
+        harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
         with open(COMPLAINT_CASES_FILE, "r", encoding="utf-8") as f:
             sample_cases = json.load(f)[:6]
 
@@ -192,7 +196,7 @@ class TestEvaluationReporter:
         md_content = BenchmarkReporter.generate_markdown_report(result)
         assert "# FlowMind AI — Comparative Evaluation Benchmark Report" in md_content
         assert "Overall System Comparison: FlowMind AI vs. Plain-RAG Baseline" in md_content
-        assert "Information Retrieval Quality" in md_content
+        assert "Mock keyword retriever (offline logic test)" in md_content
         assert "Separation of Systems Benchmark and Human Study" in md_content
 
         md_path, json_path = BenchmarkReporter.save_reports(result, output_dir=tmp_path)
@@ -203,6 +207,43 @@ class TestEvaluationReporter:
             loaded_json = json.load(f)
         assert loaded_json["dataset_size"] == 6
         assert "comparative_summary" in loaded_json
+
+
+class TestTruthfulBenchmarkLabels:
+    """Prompt 2b Task 6: Validate truthful benchmark labels and strict harness invariants."""
+
+    def test_harness_without_retriever_raises_error(self):
+        """Constructing the harness without a retriever raises an error."""
+        with pytest.raises(ValueError, match="retriever_fn must be explicitly provided"):
+            EvaluationHarness()
+
+        with pytest.raises(ValueError, match="retriever_fn must be explicitly provided"):
+            EvaluationHarness(retriever_fn=None)
+
+    def test_report_cannot_be_labelled_pgvector_when_mock_injected(self):
+        """A report cannot be labelled pgvector when the mock was injected."""
+        with pytest.raises(ValueError, match="A report cannot be labelled 'pgvector' when mock retriever was injected"):
+            EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="pgvector")
+
+    def test_saved_report_contains_retrieval_source_and_llm_provider(self, tmp_path):
+        """The saved report JSON contains retrieval_source and llm_provider."""
+        harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
+        with open(COMPLAINT_CASES_FILE, "r", encoding="utf-8") as f:
+            sample_cases = json.load(f)[:2]
+
+        result = harness.run_comparative_benchmark(cases=sample_cases)
+        md_path, json_path = BenchmarkReporter.save_reports(result, output_dir=tmp_path)
+
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        assert "retrieval_source" in data
+        assert data["retrieval_source"] == "mock"
+        assert "llm_provider" in data
+        assert "MockLLMProvider" in data["llm_provider"]
+        assert "retrieval_metrics" in data
+        assert "retrieval_source" in data["retrieval_metrics"]
+        assert data["retrieval_metrics"]["retrieval_source"] == "mock"
 
 
 class TestEvaluationAPIRoutes:
@@ -219,6 +260,8 @@ class TestEvaluationAPIRoutes:
         data = resp.json()
         assert "comparative_summary" in data
         assert "retrieval_metrics" in data
+        assert "retrieval_source" in data
+        assert "llm_provider" in data
 
     def test_get_retrieval_metrics_authenticated(self, client):
         headers = {"Authorization": "Bearer flowmind-agent-token-001"}
@@ -227,6 +270,7 @@ class TestEvaluationAPIRoutes:
         data = resp.json()
         assert "precision_at_3" in data
         assert "mrr" in data
+        assert "retrieval_source" in data
 
     def test_human_eval_route_does_not_exist(self, client):
         """CRITICAL: Academic integrity check: no synthetic human survey route exists."""

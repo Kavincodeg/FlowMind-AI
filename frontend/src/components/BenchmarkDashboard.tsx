@@ -37,7 +37,8 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
   }, [activePersona]);
 
   const metrics = benchmarkResult?.comparative_summary;
-  const llmProvider = benchmarkResult?.llm_provider || 'MockLLMProvider (deterministic, offline, no live API calls)';
+  const llmProvider = benchmarkResult?.llm_provider || 'MockLLMProvider (deterministic, offline logic test, no live API calls)';
+  const retrievalSource = benchmarkResult?.retrieval_source || retrieval?.retrieval_source || 'pgvector';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -49,8 +50,16 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
               <LayersIcon size={18} /> How this compares — Phase 4 Comparative Empirical Benchmark
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', display: 'block' }}>
-              Comparing <strong>FlowMind AI (Closed-Loop Governed Agent)</strong> against a <strong>Plain-RAG Baseline</strong> across {metrics?.total_cases ?? 30} real-world test cases.
+              Comparing <strong>FlowMind AI (Closed-Loop Governed Agent)</strong> against a <strong>Plain-RAG Baseline</strong> across {metrics?.total_cases ?? 30} cases.
             </span>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
+              <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>
+                <strong>LLM Provider:</strong> {llmProvider}
+              </span>
+              <span className="hash-pill" style={{ color: retrievalSource === 'pgvector' ? 'var(--status-success-text)' : 'var(--status-warning-text)' }}>
+                <strong>Retrieval Source:</strong> {retrievalSource === 'pgvector' ? 'pgvector (real semantic vector search)' : 'mock keyword retriever (offline logic test)'}
+              </span>
+            </div>
           </div>
 
           <button
@@ -80,10 +89,10 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
             <div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Table 1: FlowMind AI vs Plain-RAG Baseline (N={metrics.total_cases} Cases)
+                  Table 1: FlowMind AI vs Plain-RAG Baseline (30 Cases — Offline Logic Test)
                 </span>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
-                  A side-by-side look at what happens when an AI is paired with human governance and safe rules versus plain search alone.
+                  The 30-case comparative evaluation runs on MockLLMProvider and mock keyword retriever as an offline logic test to verify workflow state transitions, human approval gating compliance, RBAC boundaries, and tamper-evident audit trails (not AI generative quality).
                 </p>
               </div>
 
@@ -239,7 +248,7 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
 
                   <tr>
                     <td>
-                      <strong>Inference Pipeline Latency (Mock)</strong>
+                      <strong>Inference Pipeline Latency (Offline Test)</strong>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         Internal processing time
                       </div>
@@ -272,13 +281,39 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                 }}
               >
                 <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Primary Benchmark LLM Provider
+                  Comparative Benchmark LLM Provider
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   Configured: <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>{llmProvider}</span>
                 </div>
                 <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.45 }}>
-                  The 13.3ms (FlowMind) and 0.3ms (Baseline) figures measure offline code execution time without waiting for an internet server.
+                  The {metrics.flowmind_mean_latency_ms.toFixed(1)}ms (FlowMind) and {metrics.baseline_mean_latency_ms.toFixed(1)}ms (Baseline) figures measure offline code execution time without waiting for an internet server.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                }}
+              >
+                <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Retrieval Engine Backbone
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  Source: <span className="hash-pill" style={{ color: retrievalSource === 'pgvector' ? 'var(--status-success-text)' : 'var(--status-warning-text)' }}>
+                    {retrievalSource === 'pgvector' ? 'PostgreSQL + pgvector (real vector search)' : 'Mock keyword retriever (offline test)'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.45 }}>
+                  {retrievalSource === 'pgvector'
+                    ? 'Evaluated across 150 tickets and 7 policies (187 chunks) using all-MiniLM-L6-v2 embeddings.'
+                    : 'Evaluated against offline mock keyword retriever for offline code test verification.'}
                 </div>
               </div>
 
@@ -320,28 +355,40 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
               >
                 <div>
                   <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Information Retrieval Quality (Knowledge Backbone Evaluation)
+                    {retrievalSource === 'mock'
+                      ? 'Mock keyword retriever (offline logic test)'
+                      : 'Information Retrieval Quality (pgvector Semantic Vector Search)'}
                   </div>
                   <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>
-                    How accurately our system finds the right policies and past tickets.
+                    {retrievalSource === 'mock'
+                      ? 'Notice: Measured against offline mock keyword retriever (offline logic test). Does not measure real semantic vector search.'
+                      : 'Real semantic search against PostgreSQL + pgvector using all-MiniLM-L6-v2 embeddings (150 customer tickets + 7 company policies, 187 chunks across 25 queries).'}
                   </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
                   <div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Precision@3</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success-text)' }}>
+                      {((retrieval.precision_at_3 ?? 0) * 100).toFixed(1)}%
+                    </div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Top-3 matches relevant</div>
+                  </div>
+
+                  <div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Precision@5</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success-text)' }}>
-                      {(retrieval.precision_at_k * 100).toFixed(1)}%
+                      {(((retrieval.precision_at_5 ?? retrieval.precision_at_k ?? 0)) * 100).toFixed(1)}%
                     </div>
-                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Top matches are relevant</div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Top-5 matches relevant</div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recall@5</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success-text)' }}>
-                      {(retrieval.recall_at_k * 100).toFixed(1)}%
+                      {(((retrieval.recall_at_5 ?? retrieval.recall_at_k ?? 0)) * 100).toFixed(1)}%
                     </div>
-                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Key records retrieved</div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Expected records found</div>
                   </div>
 
                   <div>
@@ -349,15 +396,23 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success-text)' }}>
                       {retrieval.mrr.toFixed(3)}
                     </div>
-                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Best result ranks near top</div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>First relevant match rank</div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Mean Query Latency</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-primary)' }}>
+                      {(retrieval.mean_latency_ms ?? 0.0).toFixed(1)} ms
+                    </div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Embedding + vector search</div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Queries Evaluated</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {retrieval.queries_evaluated} Test Queries
+                      {retrieval.total_queries ?? retrieval.queries_evaluated ?? 25} Test Queries
                     </div>
-                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Evaluated test questions</div>
+                    <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Evaluated test set</div>
                   </div>
                 </div>
               </div>

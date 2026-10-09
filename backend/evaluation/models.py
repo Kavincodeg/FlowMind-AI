@@ -15,6 +15,7 @@ class RetrievalMetrics(BaseModel):
     """
     model_config = ConfigDict(extra="ignore")
 
+    retrieval_source: str = Field(default="pgvector", description="Retriever source ('pgvector' or 'mock')")
     precision_at_3: float = Field(default=0.0, description="Precision@3: proportion of top-3 retrieved items that are relevant")
     precision_at_5: float = Field(default=0.0, description="Precision@5: proportion of top-5 retrieved items that are relevant")
     recall_at_5: float = Field(default=0.0, description="Recall@5: proportion of relevant items retrieved in top-5")
@@ -123,6 +124,10 @@ class BenchmarkResult(BaseModel):
     llm_provider: str = Field(
         default="MockLLMProvider (deterministic, offline, no live API calls)",
         description="LLM provider used for the primary comparative benchmark run",
+    )
+    retrieval_source: str = Field(
+        default="pgvector",
+        description="Retrieval engine evaluated ('pgvector' or 'mock')",
     )
     retrieval_metrics: RetrievalMetrics
     comparative_summary: ComparativeMetricsSummary

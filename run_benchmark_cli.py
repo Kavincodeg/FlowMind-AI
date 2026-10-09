@@ -23,6 +23,13 @@ def main() -> int:
         description="Run FlowMind AI vs Plain-RAG Comparative Evaluation Benchmark"
     )
     parser.add_argument(
+        "--retriever",
+        type=str,
+        choices=["pgvector", "mock"],
+        default="pgvector",
+        help="Retrieval engine to evaluate ('pgvector' [default, real semantic search] or 'mock' [offline keyword logic test])",
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default=None,
@@ -38,9 +45,27 @@ def main() -> int:
     print("================================================================================")
     print(" FlowMind AI — Phase 4 Comparative Evaluation Harness & Performance Benchmarking")
     print("================================================================================")
+    print(f"Configured Retrieval Source: {args.retriever}")
     print("Executing 30-case dual pipeline benchmark (FlowMind AI vs. Plain-RAG Baseline)...")
 
-    harness = EvaluationHarness()
+    if args.retriever == "pgvector":
+        from backend.retrieval.store import _get_dsn
+        import psycopg2
+        try:
+            conn = psycopg2.connect(_get_dsn())
+            conn.close()
+        except Exception as exc:
+            print(f"\n[ERROR] PostgreSQL / pgvector database is unreachable: {exc}", file=sys.stderr)
+            print("Cannot evaluate real retrieval with --retriever pgvector when database is down.", file=sys.stderr)
+            print("Please ensure the database container is running or run with --retriever mock.", file=sys.stderr)
+            return 1
+
+        from backend.retrieval.retriever import retrieve
+        harness = EvaluationHarness(retriever_fn=retrieve, retrieval_source="pgvector")
+    else:
+        from backend.retrieval.mock_retriever import mock_retrieve
+        harness = EvaluationHarness(retriever_fn=mock_retrieve, retrieval_source="mock")
+
     result = harness.run_comparative_benchmark()
 
     out_dir = Path(args.output_dir) if args.output_dir else None
@@ -49,9 +74,11 @@ def main() -> int:
     print(f"\n[Artifacts Written]")
     print(f" - Markdown Report: {md_path}")
     print(f" - JSON Report:     {json_path}")
+    print(f" - LLM Provider:    {result.llm_provider}")
+    print(f" - Retrieval Source:{result.retrieval_source}")
 
     cs = result.comparative_summary
-    print("\n[Benchmark Summary Table]")
+    print("\n[Comparative Summary Table (30-Case Offline Logic Test)]")
     print(f" Total Benchmark Cases:                {cs.total_cases}")
     print(f" FlowMind Task Success Rate:           {cs.flowmind_task_success_rate:.1%}")
     print(f" Baseline Task Success Rate:           {cs.baseline_task_success_rate:.1%}")
@@ -66,11 +93,17 @@ def main() -> int:
     print(f" Baseline Mean Latency:                {cs.baseline_mean_latency_ms:.1f} ms")
 
     rm = result.retrieval_metrics
-    print("\n[Retrieval Quality Table]")
+    if result.retrieval_source == "mock":
+        print("\n[Mock keyword retriever (offline logic test)]")
+    else:
+        print("\n[Information Retrieval Quality (pgvector Semantic Vector Search)]")
+    print(f" Retrieval Engine:                     {result.retrieval_source}")
     print(f" Precision@3:                          {rm.precision_at_3:.3f}")
     print(f" Precision@5:                          {rm.precision_at_5:.3f}")
     print(f" Recall@5:                             {rm.recall_at_5:.3f}")
     print(f" Mean Reciprocal Rank (MRR):           {rm.mrr:.3f}")
+    print(f" Mean Retrieval Latency:               {rm.mean_latency_ms:.1f} ms")
+    print(f" Total Evaluated Queries:              {rm.total_queries}")
 
     if args.json:
         print("\n[JSON Output]")

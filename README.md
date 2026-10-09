@@ -49,10 +49,16 @@ Closed-loop workflow execution and governance:
 - **Connectors**: Dispatches approved actions to external systems with transaction IDs and latency measurements.
 - **Audit Service**: Write-once audit persistence guarded by `DuplicateAuditRecordError` preventing overwriting or re-computation.
 
-### Phase 4: Comparative Empirical Evaluation
-Automated benchmark and evaluation harness:
-- **13 Benchmark Scenarios**: Covers standard billing escalations, defect routing, goodwill refunds, missing evidence cases, and adversarial injection attacks.
-- **Comparative Metrics**: Evaluates FlowMind AI against Plain-RAG on Task Success Rate (100% vs 38.5%), Citation Grounding Integrity (100% vs 61.5%), and Injection Defense Rate (100% vs 0.0%).
+### Phase 4: Comparative Empirical Evaluation & Truthful Benchmarks
+Automated benchmark and evaluation harness with truthful execution disclosures:
+- **30 Curated Benchmark Scenarios (Offline Logic Test)**: Evaluates FlowMind AI against Plain-RAG Baseline on Task Success Rate (100.0% vs 0.0%), Action Execution Accuracy (80.0% vs 0.0%), Citation Grounding Integrity (100.0% vs 100.0% via Option A chunk-level verification), Human Approval Gating Compliance (100.0% vs 0.0%), and Prompt Injection Defense (100.0% vs 0.0%).
+  - *Disclosure*: The comparative run executes on `MockLLMProvider` and mock keyword retriever as an offline logic test to verify governance rules, approval gates, RBAC boundaries, and cryptographic audit records deterministically, rather than measuring generative AI text quality.
+- **Information Retrieval Quality (pgvector Semantic Vector Search)**: Evaluated against live PostgreSQL + pgvector with `all-MiniLM-L6-v2` sentence-transformer embeddings over 150 historical support tickets and 7 enterprise policies (187 chunks across 25 labeled test queries):
+  - **Precision@3**: 0.960 (exceeds target ≥ 0.500)
+  - **Precision@5**: 0.944 (exceeds target ≥ 0.400)
+  - **Recall@5**: 1.000 (exceeds target ≥ 0.600)
+  - **Mean Reciprocal Rank (MRR)**: 1.000 (exceeds target ≥ 0.700)
+  - **Mean Retrieval Latency**: 795.2 ms (real vector embedding + ANN similarity search)
 - **Structural Invariants**: Automated tests verifying that no sensitive action executes without approval, no abstention executes, and every terminal workflow produces a valid audit record.
 
 ---

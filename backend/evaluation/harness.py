@@ -56,14 +56,35 @@ class EvaluationHarness:
         retriever_fn: Optional[Callable[[RetrievalQuery], RetrievalResult]] = None,
         llm_provider: Optional[LLMProvider] = None,
         audit_service: Optional[AuditService] = None,
+        retrieval_source: Optional[str] = None,
     ):
-        self.retriever_fn = retriever_fn or mock_retrieve
+        if retriever_fn is None:
+            raise ValueError(
+                "retriever_fn must be explicitly provided. EvaluationHarness has no silent default retriever."
+            )
+
+        is_mock = (
+            retriever_fn is mock_retrieve
+            or getattr(retriever_fn, "__name__", "") == "mock_retrieve"
+            or getattr(retriever_fn, "__module__", "").endswith("mock_retriever")
+        )
+
+        if retrieval_source is None:
+            retrieval_source = "mock" if is_mock else "pgvector"
+        elif retrieval_source == "pgvector" and is_mock:
+            raise ValueError(
+                "A report cannot be labelled 'pgvector' when mock retriever was injected."
+            )
+
+        self.retriever_fn = retriever_fn
+        self.retrieval_source = retrieval_source
         self.llm_provider = llm_provider or MockLLMProvider()
         self.audit_service = audit_service or get_audit_service()
 
-        # Build FlowMind stack
+        # Build FlowMind 30-case offline logic test stack
+        # (Stays on mock retriever and mock LLM to test governance, state transitions, RBAC, and audit trails)
         self.reasoning_engine = ReasoningEngine(
-            retriever_fn=self.retriever_fn,
+            retriever_fn=mock_retrieve,
             llm_provider=self.llm_provider,
         )
         self.connector = MockEnterpriseConnector(simulate_latency_ms=5.0)
@@ -73,9 +94,9 @@ class EvaluationHarness:
             audit_service=self.audit_service,
         )
 
-        # Build Plain-RAG Baseline stack
+        # Build Plain-RAG Baseline offline stack
         self.baseline = PlainRAGBaseline(
-            retriever_fn=self.retriever_fn,
+            retriever_fn=mock_retrieve,
             llm_provider=self.llm_provider,
         )
 
@@ -340,6 +361,7 @@ class EvaluationHarness:
 
         n = len(queries)
         return RetrievalMetrics(
+            retrieval_source=self.retrieval_source,
             precision_at_3=round(sum(p3_scores) / n, 4) if n else 0.0,
             precision_at_5=round(sum(p5_scores) / n, 4) if n else 0.0,
             recall_at_5=round(sum(r5_scores) / n, 4) if n else 0.0,
@@ -440,7 +462,8 @@ class EvaluationHarness:
         return BenchmarkResult(
             timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             dataset_size=total,
-            llm_provider=f"{self.llm_provider.__class__.__name__} (deterministic, offline, no live API calls)",
+            llm_provider=f"{self.llm_provider.__class__.__name__} (deterministic, offline logic test, no live API calls)",
+            retrieval_source=self.retrieval_source,
             retrieval_metrics=retrieval_metrics,
             comparative_summary=comparative_summary,
             real_provider_latency_sample=real_provider_sample,
