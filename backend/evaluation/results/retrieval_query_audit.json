@@ -18,7 +18,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 6674.09
+    "latency_ms": 5069.82
   },
   {
     "query_id": "Q002",
@@ -33,14 +33,14 @@
       "customer_query_handling_policy.md",
       "approval_authority_matrix.md",
       "approval_authority_matrix.md",
-      "approval_authority_matrix.md"
+      "customer_query_handling_policy.md"
     ],
     "hit": true,
     "precision_at_3": 1.0,
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 52.75
+    "latency_ms": 52.5
   },
   {
     "query_id": "Q003",
@@ -62,7 +62,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 126.95
+    "latency_ms": 90.36
   },
   {
     "query_id": "Q004",
@@ -83,7 +83,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 77.16
+    "latency_ms": 43.77
   },
   {
     "query_id": "Q005",
@@ -104,7 +104,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 80.92
+    "latency_ms": 44.47
   },
   {
     "query_id": "Q006",
@@ -125,7 +125,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 51.19
+    "latency_ms": 46.95
   },
   {
     "query_id": "Q007",
@@ -147,7 +147,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 83.46
+    "latency_ms": 41.38
   },
   {
     "query_id": "Q008",
@@ -168,7 +168,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 70.5
+    "latency_ms": 42.78
   },
   {
     "query_id": "Q009",
@@ -189,7 +189,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 198.99
+    "latency_ms": 42.45
   },
   {
     "query_id": "Q010",
@@ -210,7 +210,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 48.48
+    "latency_ms": 46.32
   },
   {
     "query_id": "Q011",
@@ -231,7 +231,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 47.45
+    "latency_ms": 44.19
   },
   {
     "query_id": "Q012",
@@ -252,7 +252,7 @@
     "precision_at_5": 0.4,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 86.76
+    "latency_ms": 44.78
   },
   {
     "query_id": "Q013",
@@ -273,7 +273,7 @@
     "precision_at_5": 0.8,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 92.88
+    "latency_ms": 49.04
   },
   {
     "query_id": "Q014",
@@ -294,7 +294,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 70.55
+    "latency_ms": 43.13
   },
   {
     "query_id": "Q015",
@@ -315,7 +315,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 48.5
+    "latency_ms": 46.52
   },
   {
     "query_id": "Q016",
@@ -337,7 +337,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 70.13
+    "latency_ms": 45.57
   },
   {
     "query_id": "Q017",
@@ -358,7 +358,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 42.12
+    "latency_ms": 44.53
   },
   {
     "query_id": "Q018",
@@ -379,7 +379,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 72.47
+    "latency_ms": 41.75
   },
   {
     "query_id": "Q019",
@@ -400,7 +400,7 @@
     "precision_at_5": 0.8,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 47.48
+    "latency_ms": 41.85
   },
   {
     "query_id": "Q020",
@@ -421,7 +421,7 @@
     "precision_at_5": 0.6,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 74.55
+    "latency_ms": 42.11
   },
   {
     "query_id": "Q021",
@@ -442,7 +442,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 86.58
+    "latency_ms": 93.51
   },
   {
     "query_id": "Q022",
@@ -464,7 +464,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 76.88
+    "latency_ms": 44.32
   },
   {
     "query_id": "Q023",
@@ -486,7 +486,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 84.32
+    "latency_ms": 39.24
   },
   {
     "query_id": "Q024",
@@ -507,7 +507,7 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 70.77
+    "latency_ms": 43.69
   },
   {
     "query_id": "Q025",
@@ -528,6 +528,6 @@
     "precision_at_5": 1.0,
     "recall_at_5": 1.0,
     "reciprocal_rank": 1.0,
-    "latency_ms": 39.57
+    "latency_ms": 44.29
   }
 ]

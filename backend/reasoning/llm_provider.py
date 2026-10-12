@@ -157,7 +157,16 @@ class MockLLMProvider(LLMProvider):
 
         # Check conditions against customer ticket facts (not policy text)
         is_legal_threat = any(term in ticket_facts for term in ["legal action", "lawyer", "regulatory", "attorney", "court"])
-        is_high_amount = any(term in ticket_facts for term in ["$1,450", "1450", "> $1000", "greater than $1000", "greater than $500", "> $500", "$1000 threshold"])
+        financial_amounts = []
+        for m in re.finditer(r"\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)", ticket_facts):
+            try:
+                financial_amounts.append(float(m.group(1).replace(",", "")))
+            except Exception:
+                pass
+        has_amount_over_500 = any(amt > 500 for amt in financial_amounts)
+        is_high_amount = has_amount_over_500 or any(
+            term in ticket_facts for term in ["> $500", "greater than $500", "exceeds $500", "$500 threshold", "> $1000", "greater than $1000", "$1,450", "1450"]
+        )
         is_sla_breach = "sla_breach: true" in ticket_facts or "exceeded its sla" in ticket_facts or "sla breach" in ticket_facts or "past deadline" in ticket_facts
         is_repeat = any(term in ticket_facts for term in ["fourth time", "third time", "repeated", "repeat contact", "multiple times", "4+ tickets", "3 or more"])
         is_high_priority = "priority: high" in ticket_facts or "priority=high" in ticket_facts or "priority: 'high'" in ticket_facts
@@ -176,7 +185,7 @@ class MockLLMProvider(LLMProvider):
             target_team = "Finance & Compliance Team"
             level = "L2"
             urgency = "high"
-            rationale = "Disputed amount exceeds the high-financial-impact threshold ($1,000 / $500). Per Escalation Policy Trigger 6 and Team Routing Policy Special Cases, billing disputes over $1,000 must route to Finance & Compliance Team for L2 review."
+            rationale = "Disputed amount exceeds the high-financial-impact threshold ($500). Per Escalation Policy Trigger 6, issues involving a disputed amount greater than $500 require L2 escalation to Team Manager review."
         elif is_rerouting:
             action_type = "TRANSFER_TEAM"
             target_team = self._get_primary_team(category)
@@ -200,13 +209,13 @@ class MockLLMProvider(LLMProvider):
             target_team = self._get_primary_team(category)
             level = "L1"
             urgency = "high"
-            rationale = "Ticket has exceeded agreed resolution SLA window. Per Escalation Policy Trigger 1, an active SLA breach mandates L1 escalation to Senior Support Agent."
+            rationale = "Ticket has exceeded agreed resolution SLA window. Per Escalation Policy Trigger 1, an active SLA breach mandates L1 escalation to Team Lead."
         elif is_refund and ("dispute" in content_to_check or "charged twice" in content_to_check):
             action_type = "ISSUE_REFUND_RECOMMENDATION"
             target_team = "Finance & Compliance Team"
             level = "L1"
             urgency = "medium"
-            rationale = "Retrieved records indicate a verified duplicate billing transaction. Per Refund Policy, duplicate payments are eligible for full refund upon supervisor confirmation."
+            rationale = "Retrieved records indicate a verified duplicate billing transaction. Per Refund Policy and Approval Authority Matrix, duplicate payment refund is recommended for authorized governance approval."
         elif "damaged" in ticket_facts:
             action_type = "ESCALATE_TICKET"
             target_team = self._get_primary_team(category)

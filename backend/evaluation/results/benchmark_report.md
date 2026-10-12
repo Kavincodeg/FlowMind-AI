@@ -1,5 +1,5 @@
 # FlowMind AI — Comparative Evaluation Benchmark Report
-**Generated:** 2026-10-12T04:10:44.918058+00:00 | **Evaluated Cases:** 30
+**Generated:** 2026-10-12T06:02:42.355596+00:00 | **Evaluated Cases:** 30
 
 ---
 ## 1. Overall System Comparison: FlowMind AI vs. Plain-RAG Baseline (Offline Logic Test)
@@ -46,7 +46,7 @@
 | **Precision@5** | 0.944 | ≥ 0.400 | ✅ Exceeds |
 | **Recall@5** | 1.000 | ≥ 0.600 | ✅ Exceeds |
 | **Mean Reciprocal Rank (MRR)** | 1.000 | ≥ 0.700 | ✅ Exceeds |
-| **Mean Retrieval Latency** | 339.0 ms | < 500.0 ms | ✅ Low Latency |
+| **Mean Retrieval Latency** | 249.2 ms | < 500.0 ms | ✅ Low Latency |
 
 ---
 

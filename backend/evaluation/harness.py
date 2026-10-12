@@ -39,6 +39,7 @@ from backend.reasoning.llm_provider import LLMProvider, MockLLMProvider
 from backend.reasoning.models import ComplaintInvestigationRequest
 from backend.retrieval.mock_retriever import mock_retrieve
 from backend.retrieval.models import RetrievalQuery, RetrievalResult
+from backend.security.authority import can_approve
 from backend.security.models import PRECONFIGURED_PERSONAS, UserContext, UserRole
 
 logger = logging.getLogger(__name__)
@@ -103,10 +104,15 @@ class EvaluationHarness:
             llm_provider=self.llm_provider,
         )
 
-        # Personas for simulated authorization
-        self.admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-008"]
-        self.manager_user = PRECONFIGURED_PERSONAS["flowmind-mgr-token-003"]
+        # Personas for simulated authorization across handbook roles
         self.agent_user = PRECONFIGURED_PERSONAS["flowmind-agent-token-001"]
+        self.lead_user = PRECONFIGURED_PERSONAS["flowmind-lead-token-002"]
+        self.manager_user = PRECONFIGURED_PERSONAS["flowmind-mgr-token-003"]
+        self.head_user = PRECONFIGURED_PERSONAS["flowmind-head-token-004"]
+        self.exec_user = PRECONFIGURED_PERSONAS["flowmind-exec-token-005"]
+        self.finance_user = PRECONFIGURED_PERSONAS["flowmind-finance-token-006"]
+        self.vpfin_user = PRECONFIGURED_PERSONAS["flowmind-vpfin-token-007"]
+        self.admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-008"]
 
     def run_flowmind_case(self, case: Dict[str, Any]) -> FlowMindCaseResult:
         """
@@ -139,14 +145,23 @@ class EvaluationHarness:
         # 2. Handle Human Approval if required
         t_exec_start = time.perf_counter()
         if instance.status == WorkflowStatus.PENDING_APPROVAL:
-            # Pick authorized persona based on recommendation level
             rec = instance.reasoning_output.recommendation if instance.reasoning_output else None
-            level = rec.escalation_level.value if (rec and rec.escalation_level) else "L1"
-
-            if level in ("L3", "L4"):
-                approver = self.admin_user
-            else:
-                approver = self.manager_user
+            # Select lowest-tier eligible approver per Approval Authority Matrix
+            candidates = [
+                self.lead_user,
+                self.manager_user,
+                self.head_user,
+                self.exec_user,
+                self.finance_user,
+                self.vpfin_user,
+            ]
+            approver = self.exec_user
+            if rec:
+                for cand in candidates:
+                    allowed, _, _ = can_approve(cand, rec, workflow=instance)
+                    if allowed:
+                        approver = cand
+                        break
 
             submission = ApprovalSubmission(
                 decision=ApprovalDecisionType.APPROVE,
