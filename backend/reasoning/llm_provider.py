@@ -226,22 +226,36 @@ class MockLLMProvider(LLMProvider):
 
         is_sensitive = (action_type in {"ESCALATE_TICKET", "ISSUE_REFUND_RECOMMENDATION", "TRANSFER_TEAM"}) or injection_detected
 
+        refund_amount = None
+        if action_type == "ISSUE_REFUND_RECOMMENDATION":
+            amt_match = re.search(r"\$\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)", content_to_check)
+            if amt_match:
+                try:
+                    refund_amount = float(amt_match.group(1).replace(",", ""))
+                except Exception:
+                    refund_amount = None
+
+        rec_dict = {
+            "action_type": action_type,
+            "target_team": target_team,
+            "escalation_level": level,
+            "urgency": urgency,
+            "amount": refund_amount,
+            "parameters": {
+                "routing_rationale": rationale,
+                "target_team": target_team,
+            },
+            "requires_approval": is_sensitive,
+        }
+        if refund_amount is not None:
+            rec_dict["parameters"]["amount"] = refund_amount
+
         return json.dumps({
             "status": "RECOMMENDATION_READY",
             "abstention_reason": None,
             "customer_summary": "Customer inquiry investigated across past ticket history and organizational policies.",
             "identified_root_cause": "Identified operational breakdown or service failure documented in retrieved ticket evidence.",
-            "recommendation": {
-                "action_type": action_type,
-                "target_team": target_team,
-                "escalation_level": level,
-                "urgency": urgency,
-                "parameters": {
-                    "routing_rationale": rationale,
-                    "target_team": target_team,
-                },
-                "requires_approval": is_sensitive,
-            },
+            "recommendation": rec_dict,
             "rationale": rationale,
             "citations": all_citations,
             "confidence_score": 0.88 if not injection_detected else 0.82,

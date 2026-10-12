@@ -6,6 +6,7 @@ the Customer Complaint Escalation workflow.
 """
 from __future__ import annotations
 
+from decimal import Decimal
 import json
 import logging
 import re
@@ -264,20 +265,62 @@ class ReasoningEngine:
             except ValueError:
                 action_type = ActionType.ESCALATE_TICKET
 
-            # Non-negotiable constraint: sensitive actions (ESCALATE_TICKET, ISSUE_REFUND_RECOMMENDATION, TRANSFER_TEAM)
-            # or any recommendation produced when an adversarial injection is detected MUST require human approval.
-            # Routine actions (RESOLVE_STANDARD, REQUEST_CUSTOMER_INFO) in clean contexts only require approval if requested.
-            is_sensitive = (action_type in SENSITIVE_ACTIONS) or indirect_injection_detected
-            requires_approval = is_sensitive or bool(recommendation_dict.get("requires_approval", False))
+            # Check refund amount traceability (Prompt 3 Task 5)
+            parsed_amount: Optional[Decimal] = None
+            if action_type == ActionType.ISSUE_REFUND_RECOMMENDATION:
+                raw_amt = recommendation_dict.get("amount")
+                if raw_amt is None:
+                    raw_amt = recommendation_dict.get("parameters", {}).get("amount")
 
-            recommendation_obj = NextBestAction(
-                action_type=action_type,
-                target_team=recommendation_dict.get("target_team", "Support Team"),
-                escalation_level=recommendation_dict.get("escalation_level"),
-                urgency=recommendation_dict.get("urgency", "medium"),
-                parameters=recommendation_dict.get("parameters", {}),
-                requires_approval=requires_approval,
-            )
+                try:
+                    if raw_amt is not None:
+                        parsed_amount = Decimal(str(raw_amt))
+                except Exception:
+                    parsed_amount = None
+
+                if (
+                    parsed_amount is None
+                    or parsed_amount <= Decimal("0")
+                    or not self._is_amount_traceable(
+                        parsed_amount,
+                        request,
+                        verified_citations,
+                        ticket_result.chunks,
+                    )
+                ):
+                    logger.warning(
+                        "Refund recommendation amount (%s) could not be verified in request or cited tickets. Forcing abstention.",
+                        parsed_amount,
+                    )
+                    status_str = "ABSTAINED"
+                    abstention_reason = AbstentionReason.AMOUNT_NOT_VERIFIED
+                    recommendation_dict = None
+                    recommendation_obj = None
+                    final_rationale = (
+                        f"[Abstained: Refund amount ({parsed_amount}) could not be traced in customer request or cited tickets (AMOUNT_NOT_VERIFIED)]. "
+                        f"Original rationale: {raw_rationale}"
+                    )
+
+            if recommendation_dict and status_str != "ABSTAINED":
+                # Non-negotiable constraint: sensitive actions (ESCALATE_TICKET, ISSUE_REFUND_RECOMMENDATION, TRANSFER_TEAM)
+                # or any recommendation produced when an adversarial injection is detected MUST require human approval.
+                # Routine actions (RESOLVE_STANDARD, REQUEST_CUSTOMER_INFO) in clean contexts only require approval if requested.
+                is_sensitive = (action_type in SENSITIVE_ACTIONS) or indirect_injection_detected
+                requires_approval = is_sensitive or bool(recommendation_dict.get("requires_approval", False))
+
+                params = dict(recommendation_dict.get("parameters", {}))
+                if parsed_amount is not None:
+                    params["amount"] = str(parsed_amount)
+
+                recommendation_obj = NextBestAction(
+                    action_type=action_type,
+                    target_team=recommendation_dict.get("target_team", "Support Team"),
+                    escalation_level=recommendation_dict.get("escalation_level"),
+                    urgency=recommendation_dict.get("urgency", "medium"),
+                    amount=parsed_amount,
+                    parameters=params,
+                    requires_approval=requires_approval,
+                )
 
         # Ensure consistency: if recommendation is None and not already marked ABSTAINED, mark ABSTAINED
         if not recommendation_obj and status_str != "ABSTAINED":
@@ -334,6 +377,57 @@ class ReasoningEngine:
     # ------------------------------------------------------------------
     # Parsing & Verification
     # ------------------------------------------------------------------
+
+    def _is_amount_traceable(
+        self,
+        amount: Decimal,
+        request: ComplaintInvestigationRequest,
+        citations: List[EvidenceCitation],
+        ticket_chunks: List[Any],
+    ) -> bool:
+        """
+        Verify that a refund amount appears in the customer's request or in a cited ticket.
+        """
+        if amount is None or amount <= Decimal("0"):
+            return False
+
+        evidence_texts = [request.issue_summary]
+        cited_ticket_ids = {c.source_id for c in citations if c.source_type == "ticket"}
+        for c in citations:
+            if c.source_type == "ticket" and c.snippet:
+                evidence_texts.append(c.snippet)
+        for chunk in ticket_chunks:
+            if getattr(chunk, "source_id", "") in cited_ticket_ids:
+                evidence_texts.append(getattr(chunk, "content", ""))
+
+        combined_evidence = " ".join(evidence_texts)
+
+        # Extract numeric amounts from combined evidence
+        extracted_amounts = set()
+        matches = re.findall(r"\$?\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)", combined_evidence)
+        for m in matches:
+            clean_m = m.replace(",", "")
+            try:
+                val = Decimal(clean_m)
+                if val > 0:
+                    extracted_amounts.add(val)
+                    if val == val.to_integral_value():
+                        extracted_amounts.add(Decimal(int(val)))
+            except Exception:
+                pass
+
+        if amount in extracted_amounts:
+            return True
+        if amount == amount.to_integral_value() and Decimal(int(amount)) in extracted_amounts:
+            return True
+
+        # Check explicit formatted representations
+        amt_str = str(amount)
+        amt_2dec = f"{amount:.2f}"
+        if f"${amt_str}" in combined_evidence or f"${amt_2dec}" in combined_evidence:
+            return True
+
+        return False
 
     def _parse_and_validate_json(self, raw_text: str) -> Dict[str, Any]:
         """Strip markdown fences and parse structured JSON. Raises ValueError on error."""

@@ -1,4 +1,4 @@
-﻿"""
+"""
 # TEST-ONLY: This module must never be imported in production code.
 # Use only in tests and the evaluation harness, via explicit injection into
 # ReasoningEngine(retriever_fn=mock_retrieve).  See backend/tests/ for usage.
@@ -74,11 +74,22 @@ def mock_retrieve(query: RetrievalQuery) -> RetrievalResult:
                 "ticket", "TKT-0015", 0,
                 "Critical defect ticket for Marcus Vance. status: open, priority: high, sla_breach: true.",
             ))
-        elif "charged twice" in q or "duplicate" in q or "cust-1008" in q:
-            chunks.append(make_mock_chunk(
-                "ticket", "TKT-0008", 0,
-                "Customer Elena Rostova charged twice for monthly subscription. Billing dispute.",
-            ))
+        elif "charged twice" in q or "duplicate" in q or "cust-1008" in q or "cust-1078" in q or "cust-1079" in q:
+            if "cust-1078" in q:
+                chunks.append(make_mock_chunk(
+                    "ticket", "TKT-0078", 0,
+                    "Customer Daniel Kim charged twice on invoice for annual license ($1,200.00 duplicate charge). Confirmed duplicate billing dispute.",
+                ))
+            elif "cust-1079" in q:
+                chunks.append(make_mock_chunk(
+                    "ticket", "TKT-0079", 0,
+                    "Customer Aisha Patel credit card statement reflects duplicate charge for monthly subscription ($29.00 duplicate charge). Billing dispute.",
+                ))
+            else:
+                chunks.append(make_mock_chunk(
+                    "ticket", "TKT-0008", 0,
+                    "Customer Elena Rostova charged twice for monthly subscription ($49.00 duplicate charge). Billing dispute.",
+                ))
         elif "dispute" in q and ("1000" in q or "1450" in q or "cust-1080" in q):
             chunks.append(make_mock_chunk(
                 "ticket", "TKT-0080", 0,
