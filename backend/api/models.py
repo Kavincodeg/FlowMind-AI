@@ -39,6 +39,8 @@ class DemonstrationScenarioResponse(BaseModel):
     issue_summary: str
     expected_action: str
     required_role: str
+    priority: Optional[str] = "medium"
+    flags: Optional[List[str]] = Field(default_factory=list)
 
 
 class ComplaintRequestSummary(BaseModel):

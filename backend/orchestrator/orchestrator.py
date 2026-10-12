@@ -22,6 +22,7 @@ from backend.orchestrator.models import (
     WorkflowInstance,
     WorkflowStatus,
 )
+from backend.reasoning.auto_execution import check_auto_execution, is_auto_executable
 from backend.reasoning.engine import ReasoningEngine
 from backend.reasoning.models import ComplaintInvestigationRequest
 from backend.security.authority import compute_approval_due_at
@@ -97,9 +98,11 @@ class WorkflowOrchestrator:
             logger.error("Workflow %s: Reasoning failed (%s)", workflow_id, instance.error_message)
             return instance
 
-        # 5. Handle Routine Action Auto-Execution (Fix 3)
-        # If requires_human_approval is False (routine action in clean non-injected context)
-        if not reasoning_output.requires_human_approval and reasoning_output.recommendation:
+        # 5. Handle Routine Action Auto-Execution (Customer Query Handling Policy 5 Conditions)
+        auto_check = check_auto_execution(reasoning_output, request)
+        instance.auto_execution_check = auto_check
+
+        if is_auto_executable(reasoning_output, request) and reasoning_output.recommendation:
             logger.info("Workflow %s: Routine action qualifies for auto-execution.", workflow_id)
             instance.status = WorkflowStatus.AUTO_EXECUTED
             instance.status = WorkflowStatus.EXECUTING
@@ -386,6 +389,15 @@ class WorkflowOrchestrator:
             },
         ]
 
+        if instance.auto_execution_check is not None:
+            raw_events.append({
+                "event_id": f"EVT-003B-{short_id}",
+                "stage": "AUTO_EXECUTION_EVALUATED",
+                "timestamp": started_at,
+                "actor": "AutoExecutionPolicyEngine",
+                "details": instance.auto_execution_check,
+            })
+
         if approval_record is not None:
             raw_events.append({
                 "event_id": f"EVT-004-{short_id}",
@@ -423,6 +435,7 @@ class WorkflowOrchestrator:
             retrieval_summary=retrieval_summary,
             evidence_citations=evidence_citations,
             reasoning_output=reasoning_output_dict,
+            auto_execution_check=instance.auto_execution_check,
             approval_record=approval_record,
             execution_record=execution_record,
             chain_events=chain_events,

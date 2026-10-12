@@ -104,7 +104,7 @@ class EvaluationHarness:
         )
 
         # Personas for simulated authorization
-        self.admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-004"]
+        self.admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-008"]
         self.manager_user = PRECONFIGURED_PERSONAS["flowmind-mgr-token-003"]
         self.agent_user = PRECONFIGURED_PERSONAS["flowmind-agent-token-001"]
 

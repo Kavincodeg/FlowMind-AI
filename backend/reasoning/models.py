@@ -110,6 +110,9 @@ class ComplaintInvestigationRequest(BaseModel):
     issue_summary: str
     target_ticket_id: Optional[str] = None
     user_role: str = "support_agent"   # RBAC grounding: support_agent, team_lead, manager, admin
+    priority: Optional[str] = None     # "low", "medium", "high", "critical"
+    category: Optional[str] = None     # e.g. "delivery", "billing", "product"
+    flags: Optional[List[str]] = None  # e.g. ["legal", "security", "sla_breach"]
     top_k_tickets: int = Field(default=5, ge=1, le=20)
     top_k_policies: int = Field(default=4, ge=1, le=10)
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Audit & Outcome Tracking Models (Phase 3)
 Data models for complete, tamper-evident audit logging.
 INVARIANT: Conditional audit completeness verified across all terminal states.
@@ -26,6 +26,7 @@ class AuditRecord(BaseModel):
     retrieval_summary: Dict[str, Any] = Field(default_factory=dict)
     evidence_citations: List[Dict[str, Any]] = Field(default_factory=list)
     reasoning_output: Dict[str, Any] = Field(default_factory=dict)
+    auto_execution_check: Optional[Dict[str, Any]] = None
     approval_record: Optional[Dict[str, Any]] = None
     execution_record: Optional[Dict[str, Any]] = None
 

@@ -6,6 +6,7 @@ Verifies:
   3. Fix 3: Auto-execute path for clean routine actions bypassing PENDING_APPROVAL.
   4. Direct execution guard (UnauthorizedExecutionError).
 """
+from decimal import Decimal
 import pytest
 
 from backend.audit.service import AuditService
@@ -42,7 +43,7 @@ def test_setup():
     agent_user = PRECONFIGURED_PERSONAS["flowmind-agent-token-001"]
     lead_user = PRECONFIGURED_PERSONAS["flowmind-lead-token-002"]
     mgr_user = PRECONFIGURED_PERSONAS["flowmind-mgr-token-003"]
-    admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-004"]
+    admin_user = PRECONFIGURED_PERSONAS["flowmind-admin-token-008"]
     return {
         "orchestrator": orchestrator,
         "audit_service": audit_service,
@@ -146,6 +147,7 @@ class TestWorkflowStateTransitions:
             action_type=ActionType.ISSUE_REFUND_RECOMMENDATION,
             target_team="Senior Finance Team",
             urgency="critical",
+            amount=Decimal("150.00"),
             parameters={"verified_duplicate_id": "TX-9941"},
             requires_approval=True,
         )
@@ -178,7 +180,7 @@ class TestWorkflowStateTransitions:
         instance = orch.start_investigation(req, requester=agent)
         assert instance.status == WorkflowStatus.PENDING_APPROVAL
 
-        # Lead attempts to escalate to L3 (which requires Manager or Admin)
+        # Lead attempts to escalate to L3 (which requires Department Head or Executive)
         unauthorized_mod = NextBestAction(
             action_type=ActionType.ESCALATE_TICKET,
             target_team="Executive Escalations",
@@ -195,7 +197,7 @@ class TestWorkflowStateTransitions:
         with pytest.raises(RBACPermissionDeniedError) as exc_info:
             orch.submit_approval(instance.workflow_id, submission, approver=lead)
 
-        assert "Requires Manager or Admin" in exc_info.value.reason
+        assert "Department Head or Executive" in exc_info.value.reason
         # Workflow state remains PENDING_APPROVAL
         assert orch.get_workflow(instance.workflow_id).status == WorkflowStatus.PENDING_APPROVAL
 
@@ -212,6 +214,9 @@ class TestWorkflowStateTransitions:
             customer_id="CUST-1020",
             customer_name="Sarah Connor",
             issue_summary="Delivery estimate inquiry for package shipped yesterday. Single contact.",
+            priority="low",
+            category="delivery",
+            flags=[],
         )
         instance = orch.start_investigation(req, requester=agent)
 

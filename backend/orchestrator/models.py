@@ -64,6 +64,7 @@ class WorkflowInstance(BaseModel):
     request: ComplaintInvestigationRequest
     requester: UserContext
     reasoning_output: Optional[ReasoningOutput] = None
+    auto_execution_check: Optional[Dict[str, Any]] = None
     approval_record: Optional[Dict[str, Any]] = None
     execution_record: Optional[ExecutionResult] = None
     error_message: Optional[str] = None
