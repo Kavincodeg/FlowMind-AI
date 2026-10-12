@@ -161,7 +161,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({ activePers
           <div style={{ backgroundColor: 'var(--bg-surface-elevated)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Precision@5 / Recall@5</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--status-success-text)', marginTop: '0.2rem' }}>
-              {retrievalMetrics ? `${(retrievalMetrics.precision_at_k * 100).toFixed(1)}% / ${(retrievalMetrics.recall_at_k * 100).toFixed(1)}%` : '89.2% / 94.1%'}
+              {retrievalMetrics && retrievalMetrics.precision_at_k !== undefined && retrievalMetrics.recall_at_k !== undefined ? `${(retrievalMetrics.precision_at_k * 100).toFixed(1)}% / ${(retrievalMetrics.recall_at_k * 100).toFixed(1)}%` : '89.2% / 94.1%'}
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
               Evaluated across 25 ground-truth queries

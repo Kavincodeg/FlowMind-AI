@@ -16,8 +16,17 @@ from backend.orchestrator.models import ApprovalSubmission, WorkflowInstance
 from backend.orchestrator.orchestrator import WorkflowOrchestrator, get_orchestrator
 from backend.reasoning.models import ComplaintInvestigationRequest
 from backend.security.auth import get_current_user
-from backend.security.models import PRECONFIGURED_PERSONAS, UserContext
+from backend.security.models import PRECONFIGURED_PERSONAS, UserContext, UserRole
 from backend.security.rbac import RBACPermissionDeniedError
+
+
+def check_not_system_admin(user: UserContext) -> None:
+    """Ensure system administrators cannot access or modify customer case data."""
+    if user.role == UserRole.SYSTEM_ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System Administrators have no approval authority and no access to case data.",
+        )
 from backend.api.models import (
     AuditExportResponse,
     AuditSummaryResponse,
@@ -172,6 +181,7 @@ def investigate_complaint(
     Initiates the investigation pipeline:
       retrieval -> reasoning -> recommendation -> (abstention | auto-execute | pending approval)
     """
+    check_not_system_admin(user)
     try:
         instance = orchestrator.start_investigation(request, requester=user)
         return _format_workflow_response(instance)
@@ -187,13 +197,32 @@ def investigate_complaint(
 )
 def get_workflow_details(
     workflow_id: str,
+    user: UserContext = Depends(get_current_user),
     orchestrator: WorkflowOrchestrator = Depends(get_orchestrator),
 ) -> Dict[str, Any]:
     """Retrieve the current state, evidence citations, and recommendation for a workflow."""
+    check_not_system_admin(user)
     instance = orchestrator.get_workflow(workflow_id)
     if not instance:
         raise HTTPException(status_code=404, detail=f"Workflow '{workflow_id}' not found.")
     return _format_workflow_response(instance)
+
+
+@router.get(
+    "/workflows",
+    summary="List all workflow cases",
+)
+@router.get(
+    "/workflow",
+    summary="List all workflow cases",
+)
+def list_workflows(
+    user: UserContext = Depends(get_current_user),
+    orchestrator: WorkflowOrchestrator = Depends(get_orchestrator),
+) -> List[Dict[str, Any]]:
+    """List all workflows."""
+    check_not_system_admin(user)
+    return [_format_workflow_response(w) for w in orchestrator.list_workflows().values()]
 
 
 @router.post(
@@ -211,6 +240,7 @@ def submit_workflow_decision(
     Submit a human governance decision (APPROVE, REJECT, or MODIFY).
     CRITICAL: Approver role is resolved strictly from the server session, preventing forgery.
     """
+    check_not_system_admin(user)
     try:
         instance = orchestrator.submit_approval(
             workflow_id=workflow_id,
@@ -253,9 +283,11 @@ def submit_workflow_decision(
 )
 def get_workflow_audit(
     workflow_id: str,
+    user: UserContext = Depends(get_current_user),
     audit_service: AuditService = Depends(get_audit_service),
 ) -> Dict[str, Any]:
     """Retrieve the finalized, state-dependent audit trail for a workflow."""
+    check_not_system_admin(user)
     try:
         return audit_service.export_audit_trail(workflow_id)
     except KeyError:
@@ -269,6 +301,7 @@ def get_workflow_audit(
 )
 def verify_workflow_audit_chain(
     workflow_id: str,
+    user: UserContext = Depends(get_current_user),
     audit_service: AuditService = Depends(get_audit_service),
 ) -> Dict[str, Any]:
     """Re-derive every event hash server-side from stored content and confirm chain integrity.
@@ -281,6 +314,7 @@ def verify_workflow_audit_chain(
     Returns a real boolean result indicating whether the chain is intact, plus the index and
     event_id of the first failing event if the chain is broken.
     """
+    check_not_system_admin(user)
     record = audit_service.get_audit(workflow_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Audit record not found for workflow '{workflow_id}'.")
@@ -300,9 +334,11 @@ def verify_workflow_audit_chain(
     summary="List all recorded audit records",
 )
 def list_all_audits(
+    user: UserContext = Depends(get_current_user),
     audit_service: AuditService = Depends(get_audit_service),
 ) -> List[Dict[str, Any]]:
     """List all completed audit logs in the system."""
+    check_not_system_admin(user)
     return [
         {
             "audit_id": a.audit_id,
@@ -512,6 +548,7 @@ def list_tickets(
     current_user: UserContext = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Retrieve historical tickets from synthetic dataset for knowledge exploration."""
+    check_not_system_admin(current_user)
     import json
     from pathlib import Path
     tickets_path = Path(__file__).parent.parent / "data" / "synthetic" / "tickets.json"

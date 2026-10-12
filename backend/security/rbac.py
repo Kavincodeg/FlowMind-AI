@@ -40,45 +40,44 @@ def can_approve_action(user: UserContext, action: NextBestAction) -> Tuple[bool,
     Evaluates whether a user's verified role grants authority to approve an action proposal.
     Returns (is_authorized, explanation).
     """
-    # Superuser role can approve all actions
-    if user.role == UserRole.ADMIN:
-        return True, "Admin role holds universal authorization across all workflow tiers."
+    if user.role == UserRole.SYSTEM_ADMIN:
+        return False, "System Administrator has no approval authority."
 
     # 1. Standard Resolutions & Customer Info Requests
     if action.action_type in (ActionType.RESOLVE_STANDARD, ActionType.REQUEST_CUSTOMER_INFO, ActionType.NO_ACTION):
-        return True, f"Role '{user.role.value}' is authorized to approve standard resolutions."
+        if user.role in (UserRole.SUPPORT_AGENT, UserRole.TEAM_LEAD, UserRole.TEAM_MANAGER, UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE):
+            return True, f"Role '{user.role.value}' is authorized to approve standard resolutions."
+        return False, f"Role '{user.role.value}' cannot approve standard resolutions."
 
     # 2. Team Transfer Routing
     if action.action_type == ActionType.TRANSFER_TEAM:
-        if user.role in (UserRole.TEAM_LEAD, UserRole.MANAGER):
-            return True, f"Role '{user.role.value}' is authorized to approve cross-team transfers."
+        if user.role in (UserRole.TEAM_LEAD, UserRole.TEAM_MANAGER, UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE):
+            return True, f"Role '{user.role.value}' is authorized to approve team transfers."
         return False, f"Role '{user.role.value}' cannot approve team transfers. Requires Team Lead or above."
 
     # 3. Financial Refunds
     if action.action_type == ActionType.ISSUE_REFUND_RECOMMENDATION:
-        if user.role == UserRole.MANAGER:
-            return True, "Manager role holds financial refund approval authority."
+        if user.role in (UserRole.TEAM_MANAGER, UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE, UserRole.FINANCE_REVIEWER, UserRole.VP_FINANCE):
+            return True, f"Role '{user.role.value}' may approve refunds within their threshold."
         return False, f"Role '{user.role.value}' cannot approve financial refunds. Requires Manager or above."
 
     # 4. Ticket Escalations (Tiered by EscalationLevel)
     if action.action_type == ActionType.ESCALATE_TICKET:
         level = action.escalation_level or EscalationLevel.L1
-
         if level == EscalationLevel.L1:
-            if user.role in (UserRole.TEAM_LEAD, UserRole.MANAGER):
+            if user.role in (UserRole.TEAM_LEAD, UserRole.TEAM_MANAGER, UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE):
                 return True, f"Role '{user.role.value}' is authorized to approve L1 escalations."
-            return False, f"Role '{user.role.value}' cannot approve L1 escalations. Requires Team Lead or above."
-
-        elif level in (EscalationLevel.L2, EscalationLevel.L3):
-            if user.role == UserRole.MANAGER:
-                return True, f"Manager role is authorized to approve {level.value} escalations."
-            return False, f"Role '{user.role.value}' cannot approve {level.value} escalations. Requires Manager or Admin."
-
+        elif level == EscalationLevel.L2:
+            if user.role in (UserRole.TEAM_MANAGER, UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE):
+                return True, f"Role '{user.role.value}' is authorized to approve L2 escalations."
+        elif level == EscalationLevel.L3:
+            if user.role in (UserRole.DEPARTMENT_HEAD, UserRole.EXECUTIVE):
+                return True, f"Role '{user.role.value}' is authorized to approve L3 escalations."
         elif level == EscalationLevel.L4:
-            # Executive L4 requires Admin
-            return False, f"Role '{user.role.value}' cannot approve L4 executive escalations. Requires Admin role."
+            if user.role == UserRole.EXECUTIVE:
+                return True, f"Role '{user.role.value}' is authorized to approve L4 escalations."
+        return False, f"Role '{user.role.value}' cannot approve {level.value} escalations."
 
-    # Default fallback: reject unknown or unhandled action configurations
     return False, f"Action '{action.action_type.value}' is not permitted for role '{user.role.value}'."
 
 

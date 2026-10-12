@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Task 2 Security Fix Tests
 
 Tests that DEMO_MODE=false (default) properly blocks:
@@ -23,7 +23,7 @@ from backend.retrieval.mock_retriever import mock_retrieve
 client = TestClient(app)
 
 AGENT_TOKEN = "flowmind-agent-token-001"
-ADMIN_TOKEN = "flowmind-admin-token-004"
+ADMIN_TOKEN = "flowmind-admin-token-008"
 
 
 @pytest.fixture(autouse=True)
@@ -103,9 +103,18 @@ class TestDemoModeOn:
             res = client.get("/api/users/personas")
         assert res.status_code == 200
         personas = res.json()
-        assert len(personas) == 4
+        assert len(personas) == 8
         roles = {p["role"] for p in personas}
-        assert roles == {"support_agent", "team_lead", "manager", "admin"}
+        assert roles == {
+            "support_agent",
+            "team_lead",
+            "team_manager",
+            "department_head",
+            "executive",
+            "finance_reviewer",
+            "vp_finance",
+            "system_admin",
+        }
 
     def test_preset_token_accepted_when_demo_mode_on(self):
         """Preset bearer token authenticates when DEMO_MODE=true."""

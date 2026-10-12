@@ -82,32 +82,27 @@ class TestRBACPermissionsMatrix:
         assert can_approve_action(lead, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is False
 
     def test_manager_permissions(self):
-        manager = make_test_user(UserRole.MANAGER)
+        manager = make_test_user(UserRole.TEAM_MANAGER)
 
-        # Allowed: Standard, transfer, refund, L1, L2, L3 escalations
+        # Allowed: Standard, transfer, refund, L1, L2 escalations
         assert can_approve_action(manager, make_action(ActionType.RESOLVE_STANDARD))[0] is True
         assert can_approve_action(manager, make_action(ActionType.TRANSFER_TEAM))[0] is True
         assert can_approve_action(manager, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is True
         assert can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L1))[0] is True
         assert can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L2))[0] is True
-        assert can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L3))[0] is True
 
         # Denied: L4 executive escalation
         allowed_l4, reason = can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L4))
         assert allowed_l4 is False
-        assert "Requires Admin role" in reason
 
-    def test_admin_universal_permissions(self):
-        admin = make_test_user(UserRole.ADMIN)
+    def test_system_admin_has_no_approval_permissions(self):
+        admin = make_test_user(UserRole.SYSTEM_ADMIN)
 
-        # Universal authorization across all actions and tiers
-        assert can_approve_action(admin, make_action(ActionType.RESOLVE_STANDARD))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.TRANSFER_TEAM))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L1))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L2))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L3))[0] is True
-        assert can_approve_action(admin, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L4))[0] is True
+        # System administrator has no approval authority
+        assert can_approve_action(admin, make_action(ActionType.RESOLVE_STANDARD))[0] is False
+        assert can_approve_action(admin, make_action(ActionType.TRANSFER_TEAM))[0] is False
+        assert can_approve_action(admin, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is False
+        assert can_approve_action(admin, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L1))[0] is False
 
 
 class TestRBACEnforcementAndModifications:
@@ -140,10 +135,8 @@ class TestRBACEnforcementAndModifications:
         modified_action = make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L3)
 
         # Validating the modified action must raise RBACPermissionDeniedError
-        with pytest.raises(RBACPermissionDeniedError) as exc_info:
+        with pytest.raises(RBACPermissionDeniedError):
             verify_approval_permission(lead, modified_action)
-
-        assert "Requires Manager or Admin" in exc_info.value.reason
 
 
 class TestRBACTrustBoundary:
@@ -151,12 +144,14 @@ class TestRBACTrustBoundary:
 
     def test_token_resolution_maps_to_canonical_persona(self):
         # Preconfigured persona tokens map correctly
-        user = resolve_user_from_token("flowmind-mgr-token-003")
-        assert user is not None
-        assert user.name == "Elena Rostova"
-        assert user.role == UserRole.MANAGER
+        with pytest.MonkeyPatch.context() as m:
+            m.setenv("DEMO_MODE", "true")
+            user = resolve_user_from_token("flowmind-mgr-token-003")
+            assert user is not None
+            assert user.name == "Elena Rostova"
+            assert user.role == UserRole.TEAM_MANAGER
 
-        # Invalid or forged token returns None
-        assert resolve_user_from_token("forged-admin-token") is None
-        assert resolve_user_from_token("") is None
-        assert resolve_user_from_token(None) is None
+            # Invalid or forged token returns None
+            assert resolve_user_from_token("forged-admin-token") is None
+            assert resolve_user_from_token("") is None
+            assert resolve_user_from_token(None) is None

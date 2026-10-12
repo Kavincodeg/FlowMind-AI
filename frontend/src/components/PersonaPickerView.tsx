@@ -33,9 +33,11 @@ export const PersonaPickerView: React.FC = () => {
         {personas.map((persona) => {
           const isCurrent = activePersona?.user_id === persona.user_id;
           const badgeVariant =
-            persona.role === 'admin'
+            persona.role === 'system_admin'
               ? 'danger'
-              : persona.role === 'manager' || persona.role === 'team_lead'
+              : persona.role === 'finance_reviewer' || persona.role === 'vp_finance'
+              ? 'success'
+              : persona.role === 'team_manager' || persona.role === 'department_head' || persona.role === 'executive' || persona.role === 'team_lead'
               ? 'warning'
               : 'neutral';
 
@@ -71,7 +73,7 @@ export const PersonaPickerView: React.FC = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
                   <Badge variant={badgeVariant}>
-                    {getRolePlainTitle(persona.role)} ({persona.role})
+                    {getRolePlainTitle(persona.role)}
                   </Badge>
                   <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                     ID: {persona.user_id}

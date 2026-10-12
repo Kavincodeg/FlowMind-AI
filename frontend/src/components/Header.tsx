@@ -13,13 +13,21 @@ interface HeaderProps {
 export const getRolePlainTitle = (role: UserRole | string): string => {
   switch (role) {
     case 'support_agent':
-      return 'Customer Support';
+      return 'Tier 1 Agent';
     case 'team_lead':
       return 'Team Lead';
-    case 'manager':
-      return 'Manager';
-    case 'admin':
-      return 'System Admin';
+    case 'team_manager':
+      return 'Team Manager';
+    case 'department_head':
+      return 'Department Head';
+    case 'executive':
+      return 'Executive';
+    case 'finance_reviewer':
+      return 'Finance Reviewer';
+    case 'vp_finance':
+      return 'VP Finance';
+    case 'system_admin':
+      return 'System Administrator';
     default:
       return role;
   }
@@ -28,13 +36,21 @@ export const getRolePlainTitle = (role: UserRole | string): string => {
 export const getRoleCapabilitySummary = (role: UserRole | string): string => {
   switch (role) {
     case 'support_agent':
-      return 'Customer support — everyday questions, basic information, and standard help';
+      return 'Standard resolutions. Refunds up to $50';
     case 'team_lead':
-      return 'Team lead — everyday requests, plus moving things between teams and first-level escalations';
-    case 'manager':
-      return 'Manager — everything team leads can do, plus money refunds and higher escalations';
-    case 'admin':
-      return 'System admin — full access to all decisions, executive escalations, and system settings';
+      return 'Everything a Tier 1 Agent can. Re-routing within the team. L1 escalations. Refunds up to $200. Closing a case without resolution when the customer is unreachable';
+    case 'team_manager':
+      return 'Everything a Team Lead can. L2 escalations. Accepting or releasing a cross-team transfer. Refunds up to $500. Reversing an escalation. Restricting an abusive customer to email';
+    case 'department_head':
+      return 'Everything a Team Manager can, except refunds above $500. L3 escalations. Policy exceptions. Emergency authorisations';
+    case 'executive':
+      return 'Everything a Department Head can. L4 escalations';
+    case 'finance_reviewer':
+      return 'Refunds from $51 up to $1,000. Nothing else';
+    case 'vp_finance':
+      return 'Refunds of any amount. Nothing else';
+    case 'system_admin':
+      return 'Nothing. Manages accounts, settings and policy documents only';
     default:
       return 'Standard access';
   }
@@ -90,9 +106,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             <Badge
               variant={
-                activePersona.role === 'admin'
+                activePersona.role === 'system_admin'
                   ? 'danger'
-                  : activePersona.role === 'manager' || activePersona.role === 'team_lead'
+                  : activePersona.role === 'finance_reviewer' || activePersona.role === 'vp_finance'
+                  ? 'success'
+                  : activePersona.role === 'team_manager' || activePersona.role === 'department_head' || activePersona.role === 'executive' || activePersona.role === 'team_lead'
                   ? 'warning'
                   : 'neutral'
               }

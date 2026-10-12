@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - End-to-End API Tests (Phase 3)
 Verifies:
   1. Persona and authentication endpoints.
@@ -26,7 +26,7 @@ client = TestClient(app)
 AGENT_TOKEN = "flowmind-agent-token-001"
 LEAD_TOKEN = "flowmind-lead-token-002"
 MGR_TOKEN = "flowmind-mgr-token-003"
-ADMIN_TOKEN = "flowmind-admin-token-004"
+ADMIN_TOKEN = "flowmind-admin-token-008"
 
 
 @pytest.fixture(autouse=True)
@@ -52,9 +52,18 @@ class TestAuthAndPersonaEndpoints:
             res = client.get("/api/users/personas")
         assert res.status_code == 200
         personas = res.json()
-        assert len(personas) == 4
+        assert len(personas) == 8
         roles = {p["role"] for p in personas}
-        assert roles == {"support_agent", "team_lead", "manager", "admin"}
+        assert roles == {
+            "support_agent",
+            "team_lead",
+            "team_manager",
+            "department_head",
+            "executive",
+            "finance_reviewer",
+            "vp_finance",
+            "system_admin",
+        }
 
     def test_get_me_requires_authentication(self):
         # No token -> 401 Unauthorized
@@ -68,7 +77,7 @@ class TestAuthAndPersonaEndpoints:
         assert res.status_code == 200
         data = res.json()
         assert data["name"] == "Elena Rostova"
-        assert data["role"] == "manager"
+        assert data["role"] == "team_manager"
 
 
 class TestWorkflowAPIEndToEnd:
@@ -94,7 +103,7 @@ class TestWorkflowAPIEndToEnd:
             assert data["reasoning"]["recommendation"]["escalation_level"] == "L2"
 
             # 2. Get workflow details
-            res_get = client.get(f"/api/workflow/{wf_id}")
+            res_get = client.get(f"/api/workflow/{wf_id}", headers={"Authorization": f"Bearer {MGR_TOKEN}"})
             assert res_get.status_code == 200
             assert res_get.json()["workflow_id"] == wf_id
 
@@ -111,11 +120,11 @@ class TestWorkflowAPIEndToEnd:
             assert res_app.status_code == 200
             completed_data = res_app.json()
             assert completed_data["status"] == "COMPLETED"
-            assert completed_data["approval_record"]["approver_role"] == "manager"
+            assert completed_data["approval_record"]["approver_role"] == "team_manager"
             assert completed_data["execution_record"]["status"] == "SUCCESS"
 
             # 4. Inspect audit trail
-            res_audit = client.get(f"/api/workflow/{wf_id}/audit")
+            res_audit = client.get(f"/api/workflow/{wf_id}/audit", headers={"Authorization": f"Bearer {MGR_TOKEN}"})
             assert res_audit.status_code == 200
             audit_data = res_audit.json()
             assert audit_data["is_complete"] is True
@@ -153,9 +162,55 @@ class TestWorkflowAPIEndToEnd:
                 headers={"Authorization": f"Bearer {AGENT_TOKEN}"},  # Agent token!
             )
 
-            # Non-negotiable security invariant: Must return 403 Forbidden
             assert res_forge.status_code == 403
             detail = res_forge.json()["detail"]
             assert detail["error"] == "RBAC_PERMISSION_DENIED"
-            assert detail["user_role"] == "support_agent"  # Server-resolved role preserved!
-            assert "Requires Manager or Admin" in detail["message"]
+            assert detail["user_role"] == "support_agent"
+
+    def test_system_admin_blocked_from_all_case_endpoints(self):
+        with patch.dict(os.environ, {"DEMO_MODE": "true"}):
+            headers = {"Authorization": f"Bearer {ADMIN_TOKEN}"}
+            # 1. Investigate -> 403
+            res = client.post(
+                "/api/workflow/investigate",
+                json={"customer_id": "C-1", "customer_name": "Test", "issue_summary": "Test"},
+                headers=headers,
+            )
+            assert res.status_code == 403
+            assert "System Administrators have no approval authority and no access to case data." in res.json()["detail"]
+
+            # 2. Workflow detail -> 403
+            res = client.get("/api/workflow/wf-123", headers=headers)
+            assert res.status_code == 403
+
+            # 3. Workflow list -> 403
+            res = client.get("/api/workflows", headers=headers)
+            assert res.status_code == 403
+
+            # 4. Decision -> 403
+            res = client.post("/api/workflow/wf-123/decision", json={"decision": "APPROVE"}, headers=headers)
+            assert res.status_code == 403
+
+            # 5. Audit -> 403
+            res = client.get("/api/workflow/wf-123/audit", headers=headers)
+            assert res.status_code == 403
+
+            # 6. Audit verify -> 403
+            res = client.get("/api/workflow/wf-123/audit/verify", headers=headers)
+            assert res.status_code == 403
+
+            # 7. Audits list -> 403
+            res = client.get("/api/audits", headers=headers)
+            assert res.status_code == 403
+
+            # 8. Knowledge tickets -> 403
+            res = client.get("/api/knowledge/tickets", headers=headers)
+            assert res.status_code == 403
+
+            # Allowed: /me and /knowledge/policies
+            res_me = client.get("/api/users/me", headers=headers)
+            assert res_me.status_code == 200
+            assert res_me.json()["role"] == "system_admin"
+
+            res_pol = client.get("/api/knowledge/policies", headers=headers)
+            assert res_pol.status_code == 200

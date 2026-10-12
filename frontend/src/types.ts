@@ -9,7 +9,15 @@
  *   WorkflowStatus: matches the backend WorkflowStatus enum exactly
  */
 
-export type UserRole = 'support_agent' | 'team_lead' | 'manager' | 'admin';
+export type UserRole =
+  | 'support_agent'
+  | 'team_lead'
+  | 'team_manager'
+  | 'department_head'
+  | 'executive'
+  | 'finance_reviewer'
+  | 'vp_finance'
+  | 'system_admin';
 
 export interface Persona {
   user_id: string;
