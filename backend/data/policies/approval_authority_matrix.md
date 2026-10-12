@@ -4,8 +4,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.0 |
-| Effective date | 2026-10-08 |
+| Version | 1.1 |
+| Effective date | 2026-10-12 |
 | Owner | Head of Support |
 | Review cycle | Every 6 months |
 
@@ -67,7 +67,7 @@ An escalation to level N is approved by the role that owns level N, or by a high
 1. **Final action decides.** Authority is checked against the action that will actually be carried out. If an approver changes the amount, level or team, the changed action must be within that approver's authority.
 2. **Refund amounts add up.** The amount is the total refunded to one customer for one case. Splitting a refund into smaller parts to stay under a limit is prohibited.
 3. **Refunds above $500 belong to Finance.** Support leadership cannot approve them, whatever their level.
-4. **No self-approval.** Nobody approves an action they requested or own. If the only eligible approver is the case owner, the request goes to the next level up.
+4. **No self-approval above Tier 1 limits.** A person must not approve an action they requested or own, except actions this matrix gives to the Tier 1 Agent (standard resolutions and refunds up to $50). If the only eligible approver is the case owner, the request goes to the next level up.
 5. **AI is never an approver.** FlowMind recommends. A named person approves.
 6. **System Administrators have no approval authority** and have no access to customer personal data by default. Any administrator access to a case is logged.
 7. **Response times.** Approvers MUST respond within the level time in the Escalation Policy: L1 4 hours, L2 2 hours, L3 1 hour, L4 immediately. Finance Reviewer 1 business day. VP Finance 2 business days. A request not answered in time moves automatically to the next level up and the approver's manager is notified.

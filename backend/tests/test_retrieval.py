@@ -179,10 +179,11 @@ class TestPolicyLoading:
         for f in md_files:
             text = f.read_text(encoding="utf-8")
             ctrl = parse_document_control(text)
-            assert "version" in ctrl, f"{f.name} missing Version in Document Control"
-            assert ctrl["version"] == "1.0", f"{f.name} has unexpected version {ctrl.get('version')}"
+            expected_version = "1.1" if f.name == "approval_authority_matrix.md" else "1.0"
+            expected_date = "2026-10-12" if f.name == "approval_authority_matrix.md" else "2026-10-08"
+            assert ctrl["version"] == expected_version, f"{f.name} has unexpected version {ctrl.get('version')}"
             assert "effective_date" in ctrl, f"{f.name} missing Effective date in Document Control"
-            assert ctrl["effective_date"] == "2026-10-08", f"{f.name} has unexpected effective date"
+            assert ctrl["effective_date"] == expected_date, f"{f.name} has unexpected effective date"
             assert "owner" in ctrl, f"{f.name} missing Owner in Document Control"
             assert ctrl["owner"] == "Head of Support", f"{f.name} has unexpected owner"
 
