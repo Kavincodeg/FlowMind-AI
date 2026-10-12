@@ -4,6 +4,7 @@ Pydantic v2 data models for evidence-grounded recommendations, citations, and ab
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -45,6 +46,7 @@ class AbstentionReason(str, Enum):
     AMBIGUOUS_COMPLAINT = "AMBIGUOUS_COMPLAINT"
     LOW_CONFIDENCE = "LOW_CONFIDENCE"
     CITATION_INTEGRITY_FAILURE = "CITATION_INTEGRITY_FAILURE"
+    AMOUNT_NOT_VERIFIED = "AMOUNT_NOT_VERIFIED"
 
 
 class EvidenceCitation(BaseModel):
@@ -90,9 +92,11 @@ class NextBestAction(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     action_type: ActionType
-    target_team: str
+    target_team: str = "Customer Support"
     escalation_level: Optional[EscalationLevel] = None
     urgency: str = "medium"           # "low" | "medium" | "high" | "critical"
+    amount: Optional[Decimal] = None
+    is_cross_team: bool = False
     parameters: Dict[str, Any] = Field(default_factory=dict)
     requires_approval: bool = True    # Sensitive actions must be gated behind approval
 

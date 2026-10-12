@@ -47,6 +47,8 @@ class ApprovalSubmission(BaseModel):
     rejection_reason: Optional[str] = None
     modified_action: Optional[NextBestAction] = None
     comments: Optional[str] = None
+    note: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class WorkflowInstance(BaseModel):
@@ -56,6 +58,8 @@ class WorkflowInstance(BaseModel):
     workflow_id: str
     status: WorkflowStatus
     started_at: str
+    started_by: Optional[str] = None
+    approval_due_at: Optional[str] = None
     completed_at: Optional[str] = None
     request: ComplaintInvestigationRequest
     requester: UserContext

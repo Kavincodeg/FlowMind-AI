@@ -55,6 +55,7 @@ export interface Recommendation {
   /** Backend field: rationale (not justification) */
   rationale: string;
   escalation_level?: string;
+  amount?: number;
 }
 
 export interface ReasoningOutput {
@@ -76,8 +77,14 @@ export interface ApprovalRecord {
   approver_role: string;
   decision: 'APPROVE' | 'REJECT' | 'MODIFY';
   notes?: string;
+  note?: string;
   rejection_reason?: string;
   comments?: string;
+  time?: string;
+  amount?: number;
+  level?: string;
+  team?: string;
+  final_action?: Record<string, unknown>;
   submitted_at?: string;
   timestamp?: string;
   authorized?: boolean;
@@ -125,6 +132,8 @@ export interface WorkflowInstance {
   workflow_id: string;
   status: WorkflowStatus;
   started_at: string;
+  started_by?: string;
+  approval_due_at?: string;
   completed_at: string | null;
   request: {
     customer_id: string;

@@ -111,6 +111,8 @@ class WorkflowResponse(BaseModel):
     workflow_id: str
     status: str
     started_at: str
+    started_by: Optional[str] = None
+    approval_due_at: Optional[str] = None
     completed_at: Optional[str] = None
     request: ComplaintRequestSummary
     reasoning: Optional[ReasoningResponse] = None

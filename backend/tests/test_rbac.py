@@ -5,6 +5,8 @@ Verifies:
   2. RBAC validation on MODIFIED actions (Fix 1).
   3. Server-side token resolution trust boundary (Critical Fix).
 """
+from decimal import Decimal
+from typing import Any
 import pytest
 
 from backend.reasoning.models import ActionType, EscalationLevel, NextBestAction
@@ -29,18 +31,21 @@ def make_action(
     action_type: ActionType,
     level: EscalationLevel = None,
     urgency: str = "medium",
+    amount: Any = None,
 ) -> NextBestAction:
+    amt = Decimal(str(amount)) if amount is not None else None
     return NextBestAction(
         action_type=action_type,
         target_team="Test Team",
         escalation_level=level,
         urgency=urgency,
+        amount=amt,
         requires_approval=True,
     )
 
 
 class TestRBACPermissionsMatrix:
-    """Validate permission boundaries across all 4 roles."""
+    """Validate permission boundaries across handbook roles."""
 
     def test_support_agent_permissions(self):
         agent = make_test_user(UserRole.SUPPORT_AGENT)
@@ -48,6 +53,9 @@ class TestRBACPermissionsMatrix:
         # Allowed: Standard resolution and info requests
         assert can_approve_action(agent, make_action(ActionType.RESOLVE_STANDARD))[0] is True
         assert can_approve_action(agent, make_action(ActionType.REQUEST_CUSTOMER_INFO))[0] is True
+
+        # Allowed: Refund up to $50
+        assert can_approve_action(agent, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=50))[0] is True
 
         # Denied: Cross-team transfer
         allowed, reason = can_approve_action(agent, make_action(ActionType.TRANSFER_TEAM))
@@ -59,10 +67,15 @@ class TestRBACPermissionsMatrix:
         assert can_approve_action(agent, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L2))[0] is False
         assert can_approve_action(agent, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L3))[0] is False
 
-        # Denied: Financial refund
-        allowed, reason = can_approve_action(agent, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))
+        # Denied: Financial refund above $50
+        allowed, reason = can_approve_action(agent, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=100))
         assert allowed is False
-        assert "Manager or above" in reason
+        assert "limit $50" in reason
+
+        # Denied: Financial refund with missing amount
+        allowed_none, reason_none = can_approve_action(agent, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))
+        assert allowed_none is False
+        assert "positive monetary amount" in reason_none
 
     def test_team_lead_permissions(self):
         lead = make_test_user(UserRole.TEAM_LEAD)
@@ -72,24 +85,35 @@ class TestRBACPermissionsMatrix:
         assert can_approve_action(lead, make_action(ActionType.TRANSFER_TEAM))[0] is True
         assert can_approve_action(lead, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L1))[0] is True
 
+        # Allowed: Refund up to $200
+        assert can_approve_action(lead, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=200))[0] is True
+
         # Denied: L2 and L3 escalations
         allowed_l2, _ = can_approve_action(lead, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L2))
         allowed_l3, _ = can_approve_action(lead, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L3))
         assert allowed_l2 is False
         assert allowed_l3 is False
 
-        # Denied: Financial refund
-        assert can_approve_action(lead, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is False
+        # Denied: Financial refund above $200
+        allowed, reason = can_approve_action(lead, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=300))
+        assert allowed is False
+        assert "limit $200" in reason
 
     def test_manager_permissions(self):
         manager = make_test_user(UserRole.TEAM_MANAGER)
 
-        # Allowed: Standard, transfer, refund, L1, L2 escalations
+        # Allowed: Standard, transfer, refund up to $500, L1, L2 escalations
         assert can_approve_action(manager, make_action(ActionType.RESOLVE_STANDARD))[0] is True
         assert can_approve_action(manager, make_action(ActionType.TRANSFER_TEAM))[0] is True
-        assert can_approve_action(manager, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION))[0] is True
+        assert can_approve_action(manager, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=300))[0] is True
+        assert can_approve_action(manager, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=500))[0] is True
         assert can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L1))[0] is True
         assert can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L2))[0] is True
+
+        # Denied: Refund above $500 (belongs to Finance)
+        allowed_ref, reason_ref = can_approve_action(manager, make_action(ActionType.ISSUE_REFUND_RECOMMENDATION, amount=600))
+        assert allowed_ref is False
+        assert "limit $500" in reason_ref
 
         # Denied: L4 executive escalation
         allowed_l4, reason = can_approve_action(manager, make_action(ActionType.ESCALATE_TICKET, EscalationLevel.L4))

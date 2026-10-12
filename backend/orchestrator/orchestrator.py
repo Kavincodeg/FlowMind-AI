@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Workflow Orchestrator (Phase 3)
 Coordinates the complete lifecycle of customer complaint investigations:
   retrieve -> reason -> recommend -> approve (RBAC-gated) -> execute (mock connector) -> audit
@@ -24,6 +24,7 @@ from backend.orchestrator.models import (
 )
 from backend.reasoning.engine import ReasoningEngine
 from backend.reasoning.models import ComplaintInvestigationRequest
+from backend.security.authority import compute_approval_due_at
 from backend.security.models import UserContext
 from backend.security.rbac import verify_approval_permission
 
@@ -63,6 +64,7 @@ class WorkflowOrchestrator:
             workflow_id=workflow_id,
             status=WorkflowStatus.SUBMITTED,
             started_at=started_at,
+            started_by=requester.user_id,
             request=request,
             requester=requester,
         )
@@ -128,6 +130,12 @@ class WorkflowOrchestrator:
 
         # 6. Sensitive Action: Gated behind Human Approval
         instance.status = WorkflowStatus.PENDING_APPROVAL
+        if reasoning_output.recommendation:
+            due_at = compute_approval_due_at(
+                reasoning_output.recommendation,
+                datetime.fromisoformat(started_at),
+            )
+            instance.approval_due_at = due_at.isoformat()
         logger.info(
             "Workflow %s: Paused for human approval. Action=%s, Tier=%s",
             workflow_id,
@@ -164,7 +172,8 @@ class WorkflowOrchestrator:
 
         # --- REJECTION PATH ---
         if submission.decision == ApprovalDecisionType.REJECT:
-            if not submission.rejection_reason or not submission.rejection_reason.strip():
+            rej_reason = submission.rejection_reason or submission.comments or submission.note or submission.notes
+            if not rej_reason or not rej_reason.strip():
                 raise ValueError("A rejection reason must be provided when rejecting a recommendation.")
 
             instance.status = WorkflowStatus.REJECTED
@@ -172,13 +181,16 @@ class WorkflowOrchestrator:
                 "decision": "REJECT",
                 "approver_id": approver.user_id,
                 "approver_role": approver.role.value,
-                "rejection_reason": submission.rejection_reason.strip(),
-                "comments": submission.comments or "",
+                "rejection_reason": rej_reason.strip(),
+                "reason": rej_reason.strip(),
+                "comments": rej_reason.strip(),
+                "note": rej_reason.strip(),
+                "time": now_iso,
                 "timestamp": now_iso,
             }
             instance.completed_at = now_iso
             self._finalize_audit(instance, terminal_state="REJECTED", duration_ms=duration_ms)
-            logger.info("Workflow %s: Rejected by %s (%s). Reason: %s", workflow_id, approver.name, approver.role.value, submission.rejection_reason)
+            logger.info("Workflow %s: Rejected by %s (%s). Reason: %s", workflow_id, approver.name, approver.role.value, rej_reason)
             return instance
 
         # --- MODIFICATION PATH (Fix 1: Validate RBAC against MODIFIED action) ---
@@ -186,18 +198,36 @@ class WorkflowOrchestrator:
             if not submission.modified_action:
                 raise ValueError("A modified_action must be provided when submitting a MODIFY decision.")
 
+            mod_note = submission.note or submission.notes or submission.comments
+            if not mod_note or not mod_note.strip():
+                raise ValueError("Modifying an action requires a written note.")
+
             target_action = submission.modified_action
 
-            # FIX 1: RBAC must validate the user's authority on the MODIFIED action
-            verify_approval_permission(approver, target_action)
+            # FIX 1 & Task 3: RBAC must validate authority on the MODIFIED action (including amount and self-approval)
+            verify_approval_permission(approver, target_action, workflow=instance)
+
+            final_action_dict = {
+                "action_type": target_action.action_type.value if hasattr(target_action.action_type, "value") else str(target_action.action_type),
+                "level": target_action.escalation_level.value if target_action.escalation_level else None,
+                "team": target_action.target_team,
+                "amount": float(target_action.amount) if target_action.amount is not None else target_action.parameters.get("amount"),
+            }
 
             instance.status = WorkflowStatus.MODIFIED
             instance.approval_record = {
                 "decision": "MODIFY",
                 "approver_id": approver.user_id,
                 "approver_role": approver.role.value,
+                "final_action": final_action_dict,
+                "action_type": final_action_dict["action_type"],
+                "level": final_action_dict["level"],
+                "team": final_action_dict["team"],
+                "amount": final_action_dict["amount"],
                 "modified_action": target_action.model_dump(),
-                "comments": submission.comments or "",
+                "note": mod_note.strip(),
+                "comments": mod_note.strip(),
+                "time": now_iso,
                 "timestamp": now_iso,
             }
             logger.info("Workflow %s: Modified and approved by %s (%s)", workflow_id, approver.name, approver.role.value)
@@ -206,15 +236,30 @@ class WorkflowOrchestrator:
         elif submission.decision == ApprovalDecisionType.APPROVE:
             target_action = instance.reasoning_output.recommendation
 
-            # Validate RBAC against proposed recommendation
-            verify_approval_permission(approver, target_action)
+            # Validate RBAC against proposed recommendation (including amount and self-approval)
+            verify_approval_permission(approver, target_action, workflow=instance)
+
+            final_action_dict = {
+                "action_type": target_action.action_type.value if hasattr(target_action.action_type, "value") else str(target_action.action_type),
+                "level": target_action.escalation_level.value if target_action.escalation_level else None,
+                "team": target_action.target_team,
+                "amount": float(target_action.amount) if target_action.amount is not None else target_action.parameters.get("amount"),
+            }
+            note_or_reason = submission.comments or submission.note or submission.notes or ""
 
             instance.status = WorkflowStatus.APPROVED
             instance.approval_record = {
                 "decision": "APPROVE",
                 "approver_id": approver.user_id,
                 "approver_role": approver.role.value,
-                "comments": submission.comments or "",
+                "final_action": final_action_dict,
+                "action_type": final_action_dict["action_type"],
+                "level": final_action_dict["level"],
+                "team": final_action_dict["team"],
+                "amount": final_action_dict["amount"],
+                "note": note_or_reason,
+                "comments": note_or_reason,
+                "time": now_iso,
                 "timestamp": now_iso,
             }
             logger.info("Workflow %s: Approved as-is by %s (%s)", workflow_id, approver.name, approver.role.value)

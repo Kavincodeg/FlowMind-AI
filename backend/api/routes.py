@@ -364,6 +364,8 @@ def _format_workflow_response(instance: WorkflowInstance) -> Dict[str, Any]:
         "workflow_id": instance.workflow_id,
         "status": instance.status.value,
         "started_at": instance.started_at,
+        "started_by": instance.started_by,
+        "approval_due_at": instance.approval_due_at,
         "completed_at": instance.completed_at,
         "request": {
             "customer_id": instance.request.customer_id,
