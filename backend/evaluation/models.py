@@ -9,6 +9,62 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ComparativeRunInfo(BaseModel):
+    """Configuration and execution parameters for the 30-case comparative logic test."""
+    model_config = ConfigDict(extra="ignore")
+
+    llm_provider: str = Field(
+        default="MockLLMProvider (deterministic, offline logic test, no live API calls)",
+        description="LLM used for comparative cases",
+    )
+    retriever: str = Field(
+        default="mock keyword retriever",
+        description="Retriever used for comparative cases",
+    )
+    cases_count: int = Field(default=30, description="Total comparative cases")
+    purpose: str = Field(
+        default="Offline logic test evaluating governance, approval gating, RBAC, and audit immutability",
+        description="Purpose of comparative run",
+    )
+
+
+class RetrievalBenchmarkInfo(BaseModel):
+    """Configuration and dataset metadata for the information retrieval benchmark."""
+    model_config = ConfigDict(extra="ignore")
+
+    retriever: str = Field(default="pgvector", description="Retriever evaluated ('pgvector' or 'mock')")
+    embedding_model: str = Field(
+        default="all-MiniLM-L6-v2 (384 dims)",
+        description="Embedding model utilized",
+    )
+    corpus_size: str = Field(
+        default="150 customer tickets, 7 policy documents (187 chunks)",
+        description="Indexed knowledge corpus",
+    )
+    total_queries: int = Field(default=25, description="Number of test queries")
+    disclaimer: str = Field(
+        default="Synthetic data; 25 queries written by the project author; results are likely optimistic compared with real company data.",
+        description="Evaluation dataset disclosure",
+    )
+
+
+class QueryRetrievalDetail(BaseModel):
+    """Auditable per-query retrieval test outcome."""
+    model_config = ConfigDict(extra="ignore")
+
+    query_id: str
+    query_text: str
+    source_type: Optional[str] = None
+    expected_sources: List[str] = Field(default_factory=list)
+    returned_top_5: List[str] = Field(default_factory=list)
+    hit: bool = False
+    precision_at_3: float = 0.0
+    precision_at_5: float = 0.0
+    recall_at_5: float = 0.0
+    reciprocal_rank: float = 0.0
+    latency_ms: float = 0.0
+
+
 class RetrievalMetrics(BaseModel):
     """
     Standard information retrieval evaluation metrics.
@@ -16,12 +72,17 @@ class RetrievalMetrics(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     retrieval_source: str = Field(default="pgvector", description="Retriever source ('pgvector' or 'mock')")
+    retrieval_benchmark: RetrievalBenchmarkInfo = Field(default_factory=RetrievalBenchmarkInfo)
     precision_at_3: float = Field(default=0.0, description="Precision@3: proportion of top-3 retrieved items that are relevant")
     precision_at_5: float = Field(default=0.0, description="Precision@5: proportion of top-5 retrieved items that are relevant")
     recall_at_5: float = Field(default=0.0, description="Recall@5: proportion of relevant items retrieved in top-5")
     mrr: float = Field(default=0.0, description="Mean Reciprocal Rank (MRR) of first relevant item")
     mean_latency_ms: float = Field(default=0.0, description="Mean retrieval query latency in milliseconds")
     total_queries: int = Field(default=0, description="Total number of evaluated retrieval queries")
+    disclaimer: str = Field(
+        default="Synthetic data; 25 queries written by the project author; results are likely optimistic compared with real company data."
+    )
+    query_details: List[QueryRetrievalDetail] = Field(default_factory=list)
 
 
 class FlowMindCaseResult(BaseModel):
@@ -128,6 +189,14 @@ class BenchmarkResult(BaseModel):
     retrieval_source: str = Field(
         default="pgvector",
         description="Retrieval engine evaluated ('pgvector' or 'mock')",
+    )
+    comparative_run: ComparativeRunInfo = Field(
+        default_factory=ComparativeRunInfo,
+        description="Execution configuration of the 30-case comparative offline run",
+    )
+    retrieval_benchmark: RetrievalBenchmarkInfo = Field(
+        default_factory=RetrievalBenchmarkInfo,
+        description="Execution configuration of the information retrieval benchmark",
     )
     retrieval_metrics: RetrievalMetrics
     comparative_summary: ComparativeMetricsSummary

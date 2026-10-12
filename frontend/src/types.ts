@@ -193,11 +193,42 @@ export interface BenchmarkSummary {
   };
 }
 
+export interface ComparativeRunInfo {
+  llm_provider: string;
+  retriever: string;
+  cases_count: number;
+  purpose: string;
+}
+
+export interface RetrievalBenchmarkInfo {
+  retriever: string;
+  embedding_model: string;
+  corpus_size: string;
+  total_queries: number;
+  disclaimer: string;
+}
+
+export interface QueryRetrievalDetail {
+  query_id: string;
+  query_text: string;
+  source_type?: string;
+  expected_sources: string[];
+  returned_top_5: string[];
+  hit: boolean;
+  precision_at_3: number;
+  precision_at_5: number;
+  recall_at_5: number;
+  reciprocal_rank: number;
+  latency_ms: number;
+}
+
 export interface BenchmarkResultResponse {
   timestamp: string;
   dataset_size: number;
   llm_provider: string;
   retrieval_source?: string;
+  comparative_run?: ComparativeRunInfo;
+  retrieval_benchmark?: RetrievalBenchmarkInfo;
   retrieval_metrics: RetrievalMetrics;
   comparative_summary: BenchmarkSummary;
   real_provider_latency_sample?: {
@@ -211,6 +242,7 @@ export interface BenchmarkResultResponse {
 
 export interface RetrievalMetrics {
   retrieval_source?: string;
+  retrieval_benchmark?: RetrievalBenchmarkInfo;
   precision_at_3?: number;
   precision_at_5?: number;
   precision_at_k?: number;
@@ -220,6 +252,8 @@ export interface RetrievalMetrics {
   mean_latency_ms?: number;
   total_queries?: number;
   queries_evaluated?: number;
+  disclaimer?: string;
+  query_details?: QueryRetrievalDetail[];
 }
 
 export interface PolicyDocument {

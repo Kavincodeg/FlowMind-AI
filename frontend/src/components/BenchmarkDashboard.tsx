@@ -39,6 +39,8 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
   const metrics = benchmarkResult?.comparative_summary;
   const llmProvider = benchmarkResult?.llm_provider || 'MockLLMProvider (deterministic, offline logic test, no live API calls)';
   const retrievalSource = benchmarkResult?.retrieval_source || retrieval?.retrieval_source || 'pgvector';
+  const compRun = benchmarkResult?.comparative_run;
+  const retrievalBench = benchmarkResult?.retrieval_benchmark || retrieval?.retrieval_benchmark;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -50,16 +52,8 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
               <LayersIcon size={18} /> How this compares — Phase 4 Comparative Empirical Benchmark
             </div>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', display: 'block' }}>
-              Comparing <strong>FlowMind AI (Closed-Loop Governed Agent)</strong> against a <strong>Plain-RAG Baseline</strong> across {metrics?.total_cases ?? 30} cases.
+              Dual evaluation suite: (1) 30-case offline comparative logic test and (2) real pgvector semantic retrieval benchmark.
             </span>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
-              <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>
-                <strong>LLM Provider:</strong> {llmProvider}
-              </span>
-              <span className="hash-pill" style={{ color: retrievalSource === 'pgvector' ? 'var(--status-success-text)' : 'var(--status-warning-text)' }}>
-                <strong>Retrieval Source:</strong> {retrievalSource === 'pgvector' ? 'pgvector (real semantic vector search)' : 'mock keyword retriever (offline logic test)'}
-              </span>
-            </div>
           </div>
 
           <button
@@ -86,7 +80,36 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
         ) : metrics ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Plain-Language Comparison Table with Checkmarks / Crosses */}
+            {/* Block 1: Comparative Run Configuration */}
             <div>
+              <div
+                style={{
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                  Block 1: Comparative Run Configuration (Offline Logic Test)
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
+                  <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>
+                    <strong>LLM:</strong> {compRun?.llm_provider || llmProvider}
+                  </span>
+                  <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>
+                    <strong>Retriever:</strong> {compRun?.retriever || 'mock keyword retriever'}
+                  </span>
+                  <span className="hash-pill">
+                    <strong>Dataset:</strong> {compRun?.cases_count || 30} cases
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.725rem', color: 'var(--text-muted)', margin: '0.35rem 0 0 0' }}>
+                  {compRun?.purpose || 'Offline logic test evaluating governance, approval gating, RBAC boundaries, and audit immutability (not AI generative quality).'}
+                </p>
+              </div>
+
               <div style={{ marginBottom: '0.75rem' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   Table 1: FlowMind AI vs Plain-RAG Baseline (30 Cases — Offline Logic Test)
@@ -332,15 +355,15 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                   Production-Realistic Latency (Cloud LLM Reference)
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                  Model: <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)</span>
+                  Model: <span className="hash-pill" style={{ color: 'var(--text-primary)' }}>AnthropicLLMProvider (claude-sonnet-4-5)</span>
                 </div>
                 <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.45 }}>
-                  In live deployment, cloud calls take <strong>~1,200ms – 2,500ms</strong> per turn. FlowMind's internal checks add less than 15ms.
+                  Status: <strong>Not measured</strong>. Assumed typical range: 1,200ms – 2,500ms, not measured by this project (real measurement scheduled for Prompt 8).
                 </div>
               </div>
             </div>
 
-            {/* Information Retrieval Quality */}
+            {/* Block 2: Information Retrieval Quality Benchmark */}
             {retrieval && (
               <div
                 style={{
@@ -354,7 +377,25 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Block 2: Retrieval Benchmark Configuration
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.75rem', marginBottom: '0.4rem' }}>
+                    <span className="hash-pill" style={{ color: (retrievalBench?.retriever || retrievalSource) === 'pgvector' ? 'var(--status-success-text)' : 'var(--status-warning-text)' }}>
+                      <strong>Retriever:</strong> {retrievalBench?.retriever || retrievalSource}
+                    </span>
+                    <span className="hash-pill">
+                      <strong>Embedding:</strong> {retrievalBench?.embedding_model || 'all-MiniLM-L6-v2 (384 dims)'}
+                    </span>
+                    <span className="hash-pill">
+                      <strong>Corpus:</strong> {retrievalBench?.corpus_size || '150 tickets, 7 policies (187 chunks)'}
+                    </span>
+                    <span className="hash-pill">
+                      <strong>Queries:</strong> {retrievalBench?.total_queries || retrieval.total_queries || 25} queries
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
                     {retrievalSource === 'mock'
                       ? 'Mock keyword retriever (offline logic test)'
                       : 'Information Retrieval Quality (pgvector Semantic Vector Search)'}
@@ -413,6 +454,31 @@ export const BenchmarkDashboard: React.FC<BenchmarkDashboardProps> = ({ activePe
                       {retrieval.total_queries ?? retrieval.queries_evaluated ?? 25} Test Queries
                     </div>
                     <div style={{ fontSize: '0.675rem', color: 'var(--text-muted)' }}>Evaluated test set</div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.25rem' }}>
+                  Synthetic data; 25 queries written by the project author; results are likely optimistic compared with real company data.
+                </div>
+
+                {/* Missed Queries Callout */}
+                <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '0.75rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+                    Queries with Missed Top-K Chunks (4 / 25 queries):
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.5rem', fontSize: '0.725rem' }}>
+                    <div className="console-panel" style={{ padding: '0.5rem' }}>
+                      <strong>Q012 (P@3: 67%, P@5: 40%):</strong> Retrieved <em>escalation_policy.md</em> alongside team routing due to bug escalation terminology.
+                    </div>
+                    <div className="console-panel" style={{ padding: '0.5rem' }}>
+                      <strong>Q013 (P@3: 100%, P@5: 80%):</strong> Retrieved <em>sla_policy.md</em> at rank 4 due to warranty turnaround terms.
+                    </div>
+                    <div className="console-panel" style={{ padding: '0.5rem' }}>
+                      <strong>Q019 (P@3: 67%, P@5: 80%):</strong> Retrieved ticket <em>TKT-0051</em> at rank 3 matching customer waiting an hour.
+                    </div>
+                    <div className="console-panel" style={{ padding: '0.5rem' }}>
+                      <strong>Q020 (P@3: 67%, P@5: 60%):</strong> Retrieved <em>refund_policy.md</em> chunks regarding $500 manager threshold.
+                    </div>
                   </div>
                 </div>
               </div>

@@ -72,10 +72,25 @@ def main() -> int:
     md_path, json_path = BenchmarkReporter.save_reports(result, out_dir)
 
     print(f"\n[Artifacts Written]")
-    print(f" - Markdown Report: {md_path}")
-    print(f" - JSON Report:     {json_path}")
-    print(f" - LLM Provider:    {result.llm_provider}")
-    print(f" - Retrieval Source:{result.retrieval_source}")
+    print(f" - Markdown Report:    {md_path}")
+    print(f" - JSON Report:        {json_path}")
+    audit_file = md_path.parent / "retrieval_query_audit.md"
+    print(f" - Query Audit Log:    {audit_file}")
+
+    cr = result.comparative_run
+    print(f"\n[Block 1: Comparative Run Configuration]")
+    print(f" - LLM Provider:       {cr.llm_provider}")
+    print(f" - Retriever:          {cr.retriever}")
+    print(f" - Cases Evaluated:    {cr.cases_count}")
+    print(f" - Scope:              {cr.purpose}")
+
+    rb = result.retrieval_benchmark
+    print(f"\n[Block 2: Retrieval Benchmark Configuration]")
+    print(f" - Retriever:          {rb.retriever}")
+    print(f" - Embedding Model:    {rb.embedding_model}")
+    print(f" - Corpus Size:        {rb.corpus_size}")
+    print(f" - Total Queries:      {rb.total_queries}")
+    print(f" - Dataset Note:       {rb.disclaimer}")
 
     cs = result.comparative_summary
     print("\n[Comparative Summary Table (30-Case Offline Logic Test)]")
@@ -104,6 +119,7 @@ def main() -> int:
     print(f" Mean Reciprocal Rank (MRR):           {rm.mrr:.3f}")
     print(f" Mean Retrieval Latency:               {rm.mean_latency_ms:.1f} ms")
     print(f" Total Evaluated Queries:              {rm.total_queries}")
+    print(f" Note:                                 {rb.disclaimer}")
 
     if args.json:
         print("\n[JSON Output]")

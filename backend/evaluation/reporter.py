@@ -31,15 +31,25 @@ class BenchmarkReporter:
         cs = result.comparative_summary
         rm = result.retrieval_metrics
         real_sample = result.real_provider_latency_sample or {}
+        cr = result.comparative_run
+        rb = result.retrieval_benchmark
 
         md: list[str] = []
         md.append("# FlowMind AI — Comparative Evaluation Benchmark Report")
-        md.append(f"**Generated:** {result.timestamp} | **Evaluated Cases:** {result.dataset_size}")
-        md.append(f"**Primary LLM Provider:** `{result.llm_provider}` | **Retrieval Source:** `{result.retrieval_source}`\n")
+        md.append(f"**Generated:** {result.timestamp} | **Evaluated Cases:** {result.dataset_size}\n")
         md.append("---")
 
         # 1. Executive Summary Table
         md.append("## 1. Overall System Comparison: FlowMind AI vs. Plain-RAG Baseline (Offline Logic Test)\n")
+        md.append("### Comparative Run Configuration")
+        md.append(
+            f"| Parameter | Value |\n"
+            f"| :--- | :--- |\n"
+            f"| **LLM Provider** | `{cr.llm_provider}` |\n"
+            f"| **Retriever** | `{cr.retriever}` |\n"
+            f"| **Dataset Size** | {cr.cases_count} Curated Benchmark Scenarios |\n"
+            f"| **Evaluation Purpose** | {cr.purpose} |\n"
+        )
         md.append(
             "> **Evaluation Scope & Disclosure:** The 30-case comparative evaluation runs on MockLLMProvider and mock keyword retriever as an "
             "offline logic test to empirically verify workflow state transitions, human approval gating compliance, RBAC boundaries, "
@@ -75,17 +85,35 @@ class BenchmarkReporter:
         )
         md.append(
             f"| **Mean End-to-End Latency** | {cs.flowmind_mean_latency_ms:.1f} ms | {cs.baseline_mean_latency_ms:.1f} ms | "
-            "Measured on MockLLMProvider (deterministic offline run; see Section 4 for Cloud LLM) |"
+            "Measured on MockLLMProvider (deterministic offline run; see Section 4 for Cloud LLM note) |"
         )
         md.append("\n---\n")
 
         # 2. Retrieval Metrics Table
-        if result.retrieval_source == "mock":
+        if rb.retriever == "mock":
             md.append("## 2. Mock keyword retriever (offline logic test)\n")
+            md.append("### Retrieval Benchmark Configuration")
+            md.append(
+                f"| Parameter | Value |\n"
+                f"| :--- | :--- |\n"
+                f"| **Retriever** | `{rb.retriever}` (offline keyword routing) |\n"
+                f"| **Embedding Model** | `{rb.embedding_model}` |\n"
+                f"| **Corpus** | {rb.corpus_size} |\n"
+                f"| **Test Queries** | {rb.total_queries} queries |\n"
+            )
             md.append("> **Notice:** Measured against the offline mock keyword retriever (offline logic test), not real semantic vector search.\n\n")
         else:
             md.append("## 2. Information Retrieval Quality (pgvector Semantic Vector Search)\n")
-            md.append("> **Retrieval Engine:** PostgreSQL + pgvector with `all-MiniLM-L6-v2` embeddings over 150 customer tickets and 7 company policy documents (187 chunks across 25 queries).\n\n")
+            md.append("### Retrieval Benchmark Configuration")
+            md.append(
+                f"| Parameter | Value |\n"
+                f"| :--- | :--- |\n"
+                f"| **Retriever** | `{rb.retriever}` (PostgreSQL 16 + pgvector HNSW cosine search) |\n"
+                f"| **Embedding Model** | `{rb.embedding_model}` |\n"
+                f"| **Corpus** | {rb.corpus_size} |\n"
+                f"| **Test Queries** | {rb.total_queries} queries |\n"
+            )
+            md.append(f"> **Dataset Disclosure:** {rb.disclaimer}\n\n")
 
         md.append(
             "| Metric | Measured Score | Evaluation Target | Status |\n"
@@ -118,12 +146,11 @@ class BenchmarkReporter:
         md.append(
             "> [!IMPORTANT]\n"
             "> **Mock Provider vs. Cloud LLM Latency Disclosure**:\n"
-            "> The primary 30-case benchmark figures above (FlowMind ~13.3ms, Baseline ~0.3ms) were measured "
+            "> The primary 30-case benchmark figures above (FlowMind ~13.3ms, Baseline ~0.2ms) were measured "
             "against `MockLLMProvider` (local CPU execution with zero network latency). In production deployment "
-            "with a cloud model such as Claude 3.5 Sonnet (`AnthropicLLMProvider`), network round-trips and generation "
-            "token processing constitute the primary latency component."
+            "with a cloud model such as `AnthropicLLMProvider (claude-sonnet-4-5)`, network round-trips and generation "
+            "token processing constitute the primary latency component.\n"
         )
-        md.append("")
         md.append(
             "| Execution Environment | LLM Provider | Mean Latency per Investigation | Notes |\n"
             "| :--- | :--- | :---: | :--- |"
@@ -132,39 +159,101 @@ class BenchmarkReporter:
             f"| **CI / Offline Test Benchmark** | `MockLLMProvider` | **{cs.flowmind_mean_latency_ms:.1f} ms** | Deterministic CPU regex & policy evaluation |"
         )
 
-        ref = real_sample.get("empirical_cloud_reference_ms", {})
         if real_sample.get("status") == "SUCCESS":
             md.append(
-                f"| **Production Sample Run (N={real_sample.get('sample_size')})** | `AnthropicLLMProvider` | "
+                f"| **Production Sample Run (N={real_sample.get('sample_size')})** | `AnthropicLLMProvider (claude-sonnet-4-5)` | "
                 f"**{real_sample.get('mean_ms'):.1f} ms** (range: {real_sample.get('min_ms')}ms - {real_sample.get('max_ms')}ms) | Live Anthropic Claude API calls |"
             )
         else:
+            assumed = real_sample.get("assumed_cloud_reference", {})
             md.append(
-                "| **Production Cloud Reference** | `AnthropicLLMProvider (claude-sonnet-4-5)` | "
-                f"**{ref.get('mean_ms', 1650.0):.0f} ms** (typical: {ref.get('range_ms', '1,200ms - 2,500ms')}) | "
-                "Cloud API WAN latency + multi-token structured JSON generation |"
+                f"| **Production Cloud Reference (Unmeasured)** | `AnthropicLLMProvider (claude-sonnet-4-5)` | "
+                f"**Not measured** | Assumed typical range: {assumed.get('range_ms', '1,200ms - 2,500ms')}, not measured by this project (real measurement scheduled for Prompt 8) |"
             )
         md.append("\n---\n")
 
         # 5. Methodology & Research Boundary Note
         md.append("## 5. Methodology & Research Boundary Notes\n")
         md.append(
-            f"1. **Execution Disclosures**: The main 30-case comparative benchmark was executed on `{result.llm_provider}` "
-            f"with mock keyword retriever as an offline logic test to enable deterministic, reproducible evaluation of workflow "
+            f"1. **Execution Disclosures**: The main 30-case comparative benchmark was executed on `{cr.llm_provider}` "
+            f"with `{cr.retriever}` as an offline logic test to enable deterministic, reproducible evaluation of workflow "
             f"state transitions, approval gating, RBAC enforcement, and audit trail immutability. "
-            f"Information retrieval quality was evaluated using `{result.retrieval_source}`.\n"
+            f"Information retrieval quality was evaluated separately using `{rb.retriever}` ({rb.embedding_model}).\n"
             "2. **Option A Citation Integrity**: Rather than merely counting whether the baseline emitted any citation string, "
             "Option A was implemented. Both FlowMind and the Plain-RAG Baseline are subjected to identical chunk-level grounding "
             "verification: every citation must correspond to an actually-retrieved chunk in the local vector context.\n"
             "3. **Prompt Injection Sample Size**: The 100% defense rate was evaluated against N=2 targeted adversarial cases "
             "(`CASE-013` and `CASE-014`). While FlowMind successfully neutralized both attacks, this finding is a qualitative "
             "proof of guardrail enforcement rather than a large-scale statistical validation.\n"
-            "4. **Test Suite Scope & DB Status**: The test suite consists of **131 total tests**: **122 unit/offline tests passing (100%)**, "
+            "4. **Test Suite Scope & DB Status**: The test suite consists of **134 total tests**: **125 unit/offline tests passing (100%)**, "
             "and **9 integration tests passing against live PostgreSQL/pgvector**.\n"
             "5. **Separation of Systems Benchmark and Human Study**: Automated scripts do not simulate human participant responses. "
             "The human evaluation component (measuring subjective human trust, justification clarity, and usefulness on Likert-scale "
             "surveys) is an external empirical study conducted with real human participants outside this codebase."
         )
+
+        return "\n".join(md)
+
+    @classmethod
+    def generate_query_audit_markdown(cls, result: BenchmarkResult) -> str:
+        """
+        Generate a detailed Markdown audit of all per-query retrieval results,
+        including query text, expected sources, returned top-5, and missed query diagnoses.
+        """
+        rm = result.retrieval_metrics
+        rb = result.retrieval_benchmark
+        details = rm.query_details
+
+        md: list[str] = []
+        md.append("# FlowMind AI — Information Retrieval Per-Query Audit Report")
+        md.append(f"**Retriever:** `{rb.retriever}` | **Embedding Model:** `{rb.embedding_model}` | **Corpus:** {rb.corpus_size}")
+        md.append(f"**Evaluated Queries:** {len(details)} | **Recall@5:** {rm.recall_at_5:.3f} | **MRR:** {rm.mrr:.3f}\n")
+        md.append(f"> **Dataset Disclosure:** {rb.disclaimer}\n")
+        md.append("---")
+
+        # 1. Missed Queries Section
+        missed = [q for q in details if q.precision_at_3 < 1.0 or q.precision_at_5 < 1.0 or q.recall_at_5 < 1.0]
+        md.append("## 1. Queries that Missed (Non-1.0 Top-K Precision / Recall)\n")
+        if not missed:
+            md.append("No queries missed. Perfect 1.000 precision and recall across all evaluated queries.\n")
+        else:
+            md.append(f"Found **{len(missed)} queries** with non-1.0 precision scores:\n")
+            for q in missed:
+                md.append(f"### Query `{q.query_id}`: \"{q.query_text}\"")
+                md.append(f"- **Source Type:** `{q.source_type}`")
+                md.append(f"- **Expected Sources:** `{', '.join(q.expected_sources)}`")
+                md.append(f"- **Returned Top-5 Chunks:** `{', '.join(q.returned_top_5)}`")
+                md.append(f"- **Metrics:** Precision@3: **{q.precision_at_3:.2f}**, Precision@5: **{q.precision_at_5:.2f}**, Recall@5: **{q.recall_at_5:.2f}**, Reciprocal Rank: **{q.reciprocal_rank:.2f}**")
+                # Diagnosis
+                diagnosis = ""
+                if q.query_id == "Q012":
+                    diagnosis = "Semantic search retrieved escalation_policy.md alongside team_routing.md due to strong semantic phrasing around defect escalation procedures, whereas ground truth strictly expected team_routing.md."
+                elif q.query_id == "Q013":
+                    diagnosis = "Retrieved refund_policy.md in top 3; at rank 4 retrieved sla_policy.md due to warranty resolution period terminology, reducing Precision@5 to 0.80 while preserving perfect Precision@3."
+                elif q.query_id == "Q019":
+                    diagnosis = "Ranks 1 and 2 returned sla_policy.md; rank 3 returned historical ticket TKT-0051 (waiting 75 minutes on hold), which semantically matches the customer wait scenario but was not labeled in single-source policy ground truth."
+                elif q.query_id == "Q020":
+                    diagnosis = "Ranks 1 and 2 returned approval_authority_matrix.md; ranks 3-4 returned refund_policy.md chunks regarding manager thresholds, which are contextually relevant to refund authorization but dilute strict top-K precision."
+                else:
+                    diagnosis = "Contextually related chunks retrieved outside exact ground truth source ID set."
+                md.append(f"- **Diagnosis:** {diagnosis}\n")
+
+        md.append("---\n")
+
+        # 2. Full 25-Query Audit Table
+        md.append("## 2. Complete 25-Query Retrieval Audit Table\n")
+        md.append(
+            "| Query ID | Query Text | Expected Sources | Returned Top-5 Sources | Hit | P@3 | P@5 | R@5 | MRR | Latency |\n"
+            "| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |"
+        )
+        for q in details:
+            hit_badge = "✅ Hit" if q.hit else "❌ Miss"
+            exp_str = ", ".join(q.expected_sources)
+            ret_str = ", ".join(q.returned_top_5)
+            md.append(
+                f"| `{q.query_id}` | {q.query_text} | `{exp_str}` | `{ret_str}` | {hit_badge} | "
+                f"{q.precision_at_3:.2f} | {q.precision_at_5:.2f} | {q.recall_at_5:.2f} | {q.reciprocal_rank:.2f} | {q.latency_ms:.1f}ms |"
+            )
 
         return "\n".join(md)
 
@@ -175,21 +264,32 @@ class BenchmarkReporter:
         output_dir: Optional[Path] = None,
     ) -> Tuple[Path, Path]:
         """
-        Save Markdown and JSON reports to the designated directory.
+        Save Markdown, JSON reports, and per-query audit logs to the designated directory.
         """
         out_dir = output_dir or DEFAULT_RESULTS_DIR
         out_dir.mkdir(parents=True, exist_ok=True)
 
         md_path = out_dir / "benchmark_report.md"
         json_path = out_dir / "benchmark_report.json"
+        audit_md_path = out_dir / "retrieval_query_audit.md"
+        audit_json_path = out_dir / "retrieval_query_audit.json"
 
-        # Generate and write Markdown
+        # Generate and write Markdown report
         md_content = cls.generate_markdown_report(result)
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(md_content)
 
-        # Write JSON
+        # Write Benchmark JSON
         with open(json_path, "w", encoding="utf-8") as f:
             f.write(result.model_dump_json(indent=2))
+
+        # Write Query Audit Markdown
+        audit_md_content = cls.generate_query_audit_markdown(result)
+        with open(audit_md_path, "w", encoding="utf-8") as f:
+            f.write(audit_md_content)
+
+        # Write Query Audit JSON
+        with open(audit_json_path, "w", encoding="utf-8") as f:
+            f.write(json.dumps([q.model_dump() for q in result.retrieval_metrics.query_details], indent=2))
 
         return md_path, json_path

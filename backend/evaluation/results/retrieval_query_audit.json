@@ -1,0 +1,533 @@
+[
+  {
+    "query_id": "Q001",
+    "query_text": "customer charged twice for the same subscription this month",
+    "source_type": "ticket",
+    "expected_sources": [
+      "billing"
+    ],
+    "returned_top_5": [
+      "TKT-0014",
+      "TKT-0003",
+      "TKT-0015",
+      "TKT-0019",
+      "TKT-0029"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 6674.09
+  },
+  {
+    "query_id": "Q002",
+    "query_text": "what is the policy for refunding an incorrect invoice",
+    "source_type": "policy",
+    "expected_sources": [
+      "refund_policy.md",
+      "sla_policy.md"
+    ],
+    "returned_top_5": [
+      "refund_policy.md",
+      "customer_query_handling_policy.md",
+      "approval_authority_matrix.md",
+      "approval_authority_matrix.md",
+      "approval_authority_matrix.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 52.75
+  },
+  {
+    "query_id": "Q003",
+    "query_text": "billing dispute escalation rules and required approvals",
+    "source_type": "mixed",
+    "expected_sources": [
+      "escalation_policy.md",
+      "refund_policy.md"
+    ],
+    "returned_top_5": [
+      "TKT-0011",
+      "TKT-0012",
+      "TKT-0010",
+      "team_routing.md",
+      "TKT-0009"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 126.95
+  },
+  {
+    "query_id": "Q004",
+    "query_text": "customer says their payment failed but they were still charged",
+    "source_type": "ticket",
+    "expected_sources": [
+      "billing"
+    ],
+    "returned_top_5": [
+      "TKT-0017",
+      "TKT-0029",
+      "TKT-0020",
+      "TKT-0016",
+      "TKT-0006"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 77.16
+  },
+  {
+    "query_id": "Q005",
+    "query_text": "how long does the company have to respond to billing complaints under SLA",
+    "source_type": "policy",
+    "expected_sources": [
+      "sla_policy.md"
+    ],
+    "returned_top_5": [
+      "sla_policy.md",
+      "customer_query_handling_policy.md",
+      "sla_policy.md",
+      "escalation_policy.md",
+      "sla_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 80.92
+  },
+  {
+    "query_id": "Q006",
+    "query_text": "customer never received their package and tracking shows delivered",
+    "source_type": "ticket",
+    "expected_sources": [
+      "delivery"
+    ],
+    "returned_top_5": [
+      "TKT-0053",
+      "TKT-0041",
+      "TKT-0052",
+      "TKT-0032",
+      "TKT-0055"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 51.19
+  },
+  {
+    "query_id": "Q007",
+    "query_text": "wrong item was sent to the customer - how do we handle this",
+    "source_type": "mixed",
+    "expected_sources": [
+      "refund_policy.md",
+      "team_routing.md"
+    ],
+    "returned_top_5": [
+      "TKT-0032",
+      "TKT-0054",
+      "TKT-0048",
+      "TKT-0051",
+      "TKT-0037"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 83.46
+  },
+  {
+    "query_id": "Q008",
+    "query_text": "goods arrived damaged what is the refund eligibility",
+    "source_type": "policy",
+    "expected_sources": [
+      "refund_policy.md"
+    ],
+    "returned_top_5": [
+      "refund_policy.md",
+      "refund_policy.md",
+      "approval_authority_matrix.md",
+      "refund_policy.md",
+      "refund_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 70.5
+  },
+  {
+    "query_id": "Q009",
+    "query_text": "delivery delayed because of third party logistics provider",
+    "source_type": "mixed",
+    "expected_sources": [
+      "sla_policy.md"
+    ],
+    "returned_top_5": [
+      "TKT-0058",
+      "TKT-0059",
+      "TKT-0035",
+      "TKT-0053",
+      "TKT-0051"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 198.99
+  },
+  {
+    "query_id": "Q010",
+    "query_text": "product stopped working after one week of use - possible manufacturing defect",
+    "source_type": "ticket",
+    "expected_sources": [
+      "product_defect"
+    ],
+    "returned_top_5": [
+      "TKT-0062",
+      "TKT-0061",
+      "TKT-0074",
+      "TKT-0073",
+      "TKT-0071"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 48.48
+  },
+  {
+    "query_id": "Q011",
+    "query_text": "software keeps crashing on startup repeatedly for multiple users",
+    "source_type": "ticket",
+    "expected_sources": [
+      "product_defect"
+    ],
+    "returned_top_5": [
+      "TKT-0066",
+      "TKT-0067",
+      "TKT-0070",
+      "TKT-0065",
+      "TKT-0089"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 47.45
+  },
+  {
+    "query_id": "Q012",
+    "query_text": "what team handles product quality and engineering defect escalations",
+    "source_type": "policy",
+    "expected_sources": [
+      "team_routing.md"
+    ],
+    "returned_top_5": [
+      "team_routing.md",
+      "customer_query_handling_policy.md",
+      "escalation_policy.md",
+      "customer_query_handling_policy.md",
+      "escalation_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 0.6667,
+    "precision_at_5": 0.4,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 86.76
+  },
+  {
+    "query_id": "Q013",
+    "query_text": "how long is the warranty refund period for defective products",
+    "source_type": "policy",
+    "expected_sources": [
+      "refund_policy.md"
+    ],
+    "returned_top_5": [
+      "refund_policy.md",
+      "customer_query_handling_policy.md",
+      "refund_policy.md",
+      "sla_policy.md",
+      "refund_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 0.8,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 92.88
+  },
+  {
+    "query_id": "Q014",
+    "query_text": "customer locked out of their account after multiple failed login attempts",
+    "source_type": "ticket",
+    "expected_sources": [
+      "account_access"
+    ],
+    "returned_top_5": [
+      "TKT-0112",
+      "TKT-0118",
+      "TKT-0113",
+      "TKT-0103",
+      "TKT-0106"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 70.55
+  },
+  {
+    "query_id": "Q015",
+    "query_text": "two factor authentication not working customer cannot receive code",
+    "source_type": "ticket",
+    "expected_sources": [
+      "account_access"
+    ],
+    "returned_top_5": [
+      "TKT-0120",
+      "TKT-0116",
+      "TKT-0100",
+      "TKT-0110",
+      "TKT-0113"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 48.5
+  },
+  {
+    "query_id": "Q016",
+    "query_text": "what are the SLA requirements for account security issues",
+    "source_type": "policy",
+    "expected_sources": [
+      "sla_policy.md",
+      "team_routing.md"
+    ],
+    "returned_top_5": [
+      "customer_query_handling_policy.md",
+      "customer_query_handling_policy.md",
+      "escalation_policy.md",
+      "sla_policy.md",
+      "team_routing.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 70.13
+  },
+  {
+    "query_id": "Q017",
+    "query_text": "customer account was suspended incorrectly by the system",
+    "source_type": "ticket",
+    "expected_sources": [
+      "account_access"
+    ],
+    "returned_top_5": [
+      "TKT-0094",
+      "TKT-0093",
+      "TKT-0099",
+      "TKT-0112",
+      "TKT-0118"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 42.12
+  },
+  {
+    "query_id": "Q018",
+    "query_text": "customer complained about rude and unhelpful support agent",
+    "source_type": "ticket",
+    "expected_sources": [
+      "service_quality"
+    ],
+    "returned_top_5": [
+      "TKT-0142",
+      "TKT-0135",
+      "TKT-0130",
+      "TKT-0126",
+      "TKT-0090"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 72.47
+  },
+  {
+    "query_id": "Q019",
+    "query_text": "customer waited over an hour and issue was not resolved",
+    "source_type": "ticket",
+    "expected_sources": [
+      "service_quality"
+    ],
+    "returned_top_5": [
+      "TKT-0134",
+      "TKT-0140",
+      "TKT-0051",
+      "TKT-0124",
+      "TKT-0128"
+    ],
+    "hit": true,
+    "precision_at_3": 0.6667,
+    "precision_at_5": 0.8,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 47.48
+  },
+  {
+    "query_id": "Q020",
+    "query_text": "what goodwill refund can we offer for poor service experience",
+    "source_type": "policy",
+    "expected_sources": [
+      "refund_policy.md"
+    ],
+    "returned_top_5": [
+      "refund_policy.md",
+      "refund_policy.md",
+      "approval_authority_matrix.md",
+      "approval_authority_matrix.md",
+      "refund_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 0.6667,
+    "precision_at_5": 0.6,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 74.55
+  },
+  {
+    "query_id": "Q021",
+    "query_text": "customer has contacted us 4 times this month about the same billing problem",
+    "source_type": "mixed",
+    "expected_sources": [
+      "escalation_policy.md"
+    ],
+    "returned_top_5": [
+      "TKT-0010",
+      "TKT-0003",
+      "TKT-0014",
+      "TKT-0012",
+      "TKT-0029"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 86.58
+  },
+  {
+    "query_id": "Q022",
+    "query_text": "high priority ticket open for more than 24 hours without resolution",
+    "source_type": "policy",
+    "expected_sources": [
+      "escalation_policy.md",
+      "sla_policy.md"
+    ],
+    "returned_top_5": [
+      "escalation_policy.md",
+      "sla_policy.md",
+      "sla_policy.md",
+      "sla_policy.md",
+      "sla_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 76.88
+  },
+  {
+    "query_id": "Q023",
+    "query_text": "customer threatening legal action over unresolved complaint",
+    "source_type": "mixed",
+    "expected_sources": [
+      "escalation_policy.md",
+      "team_routing.md"
+    ],
+    "returned_top_5": [
+      "customer_query_handling_policy.md",
+      "TKT-0121",
+      "TKT-0145",
+      "TKT-0128",
+      "TKT-0138"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 84.32
+  },
+  {
+    "query_id": "Q024",
+    "query_text": "what data can the AI system access when reviewing customer tickets",
+    "source_type": "policy",
+    "expected_sources": [
+      "data_handling_policy.md"
+    ],
+    "returned_top_5": [
+      "data_handling_policy.md",
+      "data_handling_policy.md",
+      "data_handling_policy.md",
+      "customer_query_handling_policy.md",
+      "data_handling_policy.md"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 70.77
+  },
+  {
+    "query_id": "Q025",
+    "query_text": "open high priority billing tickets with SLA breach that need escalation",
+    "source_type": "ticket",
+    "expected_sources": [
+      "billing"
+    ],
+    "returned_top_5": [
+      "TKT-0009",
+      "TKT-0015",
+      "TKT-0016",
+      "TKT-0012",
+      "TKT-0008"
+    ],
+    "hit": true,
+    "precision_at_3": 1.0,
+    "precision_at_5": 1.0,
+    "recall_at_5": 1.0,
+    "reciprocal_rank": 1.0,
+    "latency_ms": 39.57
+  }
+]

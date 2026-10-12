@@ -26,7 +26,10 @@ from backend.evaluation.models import (
     BaselineCaseResult,
     BenchmarkResult,
     ComparativeMetricsSummary,
+    ComparativeRunInfo,
     FlowMindCaseResult,
+    QueryRetrievalDetail,
+    RetrievalBenchmarkInfo,
     RetrievalMetrics,
 )
 from backend.orchestrator.models import ApprovalDecisionType, ApprovalSubmission, WorkflowStatus
@@ -306,8 +309,10 @@ class EvaluationHarness:
         r5_scores: List[float] = []
         reciprocal_ranks: List[float] = []
         latencies: List[float] = []
+        query_details: List[QueryRetrievalDetail] = []
 
         for q_item in queries:
+            query_id = q_item.get("query_id", "")
             query_text = q_item["query_text"]
             source_type = q_item.get("source_type")
             relevant_ids = set(q_item.get("relevant_source_ids", []))
@@ -325,6 +330,7 @@ class EvaluationHarness:
 
             # Determine relevance of each retrieved chunk
             relevance_flags: List[bool] = []
+            returned_ids: List[str] = [c.source_id for c in res.chunks[:5]]
             for chunk in res.chunks:
                 is_rel = False
                 if relevant_ids and chunk.source_id in relevant_ids:
@@ -359,15 +365,44 @@ class EvaluationHarness:
                     break
             reciprocal_ranks.append(rr)
 
+            expected_sources = sorted(list(relevant_ids or relevant_cats))
+            has_hit = any(top5)
+            query_details.append(
+                QueryRetrievalDetail(
+                    query_id=query_id,
+                    query_text=query_text,
+                    source_type=source_type,
+                    expected_sources=expected_sources,
+                    returned_top_5=returned_ids,
+                    hit=has_hit,
+                    precision_at_3=round(p3, 4),
+                    precision_at_5=round(p5, 4),
+                    recall_at_5=round(r5, 4),
+                    reciprocal_rank=round(rr, 4),
+                    latency_ms=round(latency, 2),
+                )
+            )
+
         n = len(queries)
+        retrieval_bench_info = RetrievalBenchmarkInfo(
+            retriever=self.retrieval_source,
+            embedding_model="all-MiniLM-L6-v2 (384 dims)" if self.retrieval_source == "pgvector" else "N/A (keyword mock)",
+            corpus_size="150 customer tickets, 7 policy documents (187 chunks)" if self.retrieval_source == "pgvector" else "Canned mock corpus",
+            total_queries=n,
+            disclaimer="Synthetic data; 25 queries written by the project author; results are likely optimistic compared with real company data.",
+        )
+
         return RetrievalMetrics(
             retrieval_source=self.retrieval_source,
+            retrieval_benchmark=retrieval_bench_info,
             precision_at_3=round(sum(p3_scores) / n, 4) if n else 0.0,
             precision_at_5=round(sum(p5_scores) / n, 4) if n else 0.0,
             recall_at_5=round(sum(r5_scores) / n, 4) if n else 0.0,
             mrr=round(sum(reciprocal_ranks) / n, 4) if n else 0.0,
             mean_latency_ms=round(sum(latencies) / n, 2) if n else 0.0,
             total_queries=n,
+            disclaimer="Synthetic data; 25 queries written by the project author; results are likely optimistic compared with real company data.",
+            query_details=query_details,
         )
 
     def run_comparative_benchmark(
@@ -459,11 +494,20 @@ class EvaluationHarness:
             real_provider_latency_sample=real_provider_sample,
         )
 
+        comp_run_info = ComparativeRunInfo(
+            llm_provider=f"{self.llm_provider.__class__.__name__} (deterministic, offline logic test, no live API calls)",
+            retriever="mock keyword retriever",
+            cases_count=total,
+            purpose="Offline logic test evaluating governance, approval gating, RBAC, and audit immutability",
+        )
+
         return BenchmarkResult(
             timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             dataset_size=total,
-            llm_provider=f"{self.llm_provider.__class__.__name__} (deterministic, offline logic test, no live API calls)",
+            llm_provider=comp_run_info.llm_provider,
             retrieval_source=self.retrieval_source,
+            comparative_run=comp_run_info,
+            retrieval_benchmark=retrieval_metrics.retrieval_benchmark,
             retrieval_metrics=retrieval_metrics,
             comparative_summary=comparative_summary,
             real_provider_latency_sample=real_provider_sample,
@@ -487,10 +531,9 @@ class EvaluationHarness:
                 "status": "SKIPPED_LOCAL_ENVIRONMENT",
                 "provider": "AnthropicLLMProvider (claude-sonnet-4-5)",
                 "reason": "ANTHROPIC_API_KEY not configured in local environment",
-                "empirical_cloud_reference_ms": {
-                    "mean_ms": 1650.0,
+                "assumed_cloud_reference": {
                     "range_ms": "1,200ms - 2,500ms",
-                    "note": "Empirical reference for Claude 3.5 Sonnet cloud API round-trip per complaint investigation",
+                    "note": "Assumed typical range, not measured by this project (real measurement scheduled for Prompt 8).",
                 },
             }
 
@@ -521,8 +564,8 @@ class EvaluationHarness:
                 "status": "ERROR",
                 "provider": "AnthropicLLMProvider (claude-sonnet-4-5)",
                 "error": str(e),
-                "empirical_cloud_reference_ms": {
-                    "mean_ms": 1650.0,
+                "assumed_cloud_reference": {
                     "range_ms": "1,200ms - 2,500ms",
+                    "note": "Assumed typical range, not measured by this project.",
                 },
             }
