@@ -29,6 +29,17 @@ ROLE_DISPLAY_NAMES: Dict[UserRole, str] = {
     UserRole.SYSTEM_ADMIN: "System Administrator",
 }
 
+ROLE_PLAIN_STATEMENTS: Dict[UserRole, str] = {
+    UserRole.SUPPORT_AGENT: "Standard resolutions; refunds up to $50.",
+    UserRole.TEAM_LEAD: "Re-route within team; escalate to L1; refunds up to $200.",
+    UserRole.TEAM_MANAGER: "Cross-team transfer; escalate to L2; refunds up to $500.",
+    UserRole.DEPARTMENT_HEAD: "Escalate to L3; refunds up to $500.",
+    UserRole.EXECUTIVE: "Escalate to L4; refunds up to $500.",
+    UserRole.FINANCE_REVIEWER: "Refunds up to $1,000. No escalations or standard resolutions.",
+    UserRole.VP_FINANCE: "Refunds of any amount. No escalations or standard resolutions.",
+    UserRole.SYSTEM_ADMIN: "No approval authority and no access to case data.",
+}
+
 # ---------------------------------------------------------------------------
 # 2. Role lines / hierarchies as data
 # ---------------------------------------------------------------------------
@@ -371,3 +382,89 @@ def _get_candidate_roles(action: NextBestAction) -> List[UserRole]:
             return get_required_roles_for_refund(amt)
         return [UserRole.SUPPORT_AGENT, UserRole.TEAM_LEAD, UserRole.TEAM_MANAGER]
     return []
+
+
+def get_security_matrix_data() -> Dict[str, Any]:
+    """
+    Generate dynamic security matrix from authority.py data structures.
+    Used by GET /api/security/matrix to ensure code and UI never drift.
+    """
+    roles = [r.value for r in UserRole]
+
+    role_details = [
+        {
+            "role": r.value,
+            "title": ROLE_DISPLAY_NAMES[r],
+            "may_approve": ROLE_PLAIN_STATEMENTS[r],
+            "refund_limit": "Unlimited" if REFUND_LIMITS[r] == Decimal("Infinity") else (f"${REFUND_LIMITS[r]:.0f}" if REFUND_LIMITS[r] is not None else "None"),
+        }
+        for r in UserRole
+    ]
+
+    actions = [
+        {
+            "action_type": ActionType.RESOLVE_STANDARD.value,
+            "label": "Standard Resolution",
+            "tier": "Tier 1",
+            "sensitive": False,
+            "description": "Standard guidance, FAQ responses, or routine service fulfillment. May be approved by support-line roles.",
+            "authorized_roles": [r.value for r in STANDARD_RESOLUTION_ROLES],
+            "requires_approval": False,
+        },
+        {
+            "action_type": ActionType.REQUEST_CUSTOMER_INFO.value,
+            "label": "Request Additional Info",
+            "tier": "Tier 1",
+            "sensitive": False,
+            "description": "Inquire customer for invoice details, device logs, or clarifications.",
+            "authorized_roles": [r.value for r in STANDARD_RESOLUTION_ROLES],
+            "requires_approval": False,
+        },
+        {
+            "action_type": ActionType.TRANSFER_TEAM.value,
+            "label": "Team Routing Transfer",
+            "tier": "Tier 2",
+            "sensitive": True,
+            "description": "Re-route within team: Team Lead+. Cross-team transfer: Team Manager+.",
+            "authorized_roles": [r.value for r in CROSS_TEAM_TRANSFER_ROLES],
+            "requires_approval": True,
+        },
+        {
+            "action_type": ActionType.ISSUE_REFUND_RECOMMENDATION.value,
+            "label": "Financial Refund or Credit",
+            "tier": "Tier 1–4 & Finance",
+            "sensitive": True,
+            "description": "Tier 1 Agent ($50), Team Lead ($200), Team Manager/Dept Head/Exec ($500), Finance Reviewer ($1,000), VP Finance (unlimited). Over $500 requires Finance.",
+            "authorized_roles": [
+                UserRole.SUPPORT_AGENT.value,
+                UserRole.TEAM_LEAD.value,
+                UserRole.TEAM_MANAGER.value,
+                UserRole.DEPARTMENT_HEAD.value,
+                UserRole.EXECUTIVE.value,
+                UserRole.FINANCE_REVIEWER.value,
+                UserRole.VP_FINANCE.value,
+            ],
+            "requires_approval": True,
+        },
+        {
+            "action_type": ActionType.ESCALATE_TICKET.value,
+            "label": "Hierarchical Escalation (L1–L4)",
+            "tier": "Tier 2–4",
+            "sensitive": True,
+            "description": "L1 (Team Lead+), L2 (Team Manager+), L3 (Department Head+), L4 (Executive). Finance roles cannot approve escalations.",
+            "authorized_roles": [r.value for r in ESCALATION_ROLES[EscalationLevel.L1]],
+            "requires_approval": True,
+        },
+    ]
+
+    return {
+        "roles": roles,
+        "actions": actions,
+        "role_details": role_details,
+        "governance_rules": {
+            "rejection_rationale_mandatory": True,
+            "parameter_modification_enforced": True,
+            "server_token_resolution": True,
+            "hash_chain_immutability": True,
+        },
+    }

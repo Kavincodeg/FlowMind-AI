@@ -12,6 +12,7 @@ import { BenchmarkDashboard } from './components/BenchmarkDashboard';
 import { KnowledgeBaseView } from './components/KnowledgeBaseView';
 import { GovernanceMatrixView } from './components/GovernanceMatrixView';
 import { PersonaPickerView } from './components/PersonaPickerView';
+import { AdminLandingView } from './components/AdminLandingView';
 import { LoadingState } from './components/ui';
 import {
   ShieldIcon,
@@ -41,6 +42,7 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
 
   const pathname = location.pathname;
+  const isAdmin = activePersona?.role === 'system_admin';
 
   return (
     <div className="app-container">
@@ -107,32 +109,36 @@ const AppLayout: React.FC = () => {
           <HomeIcon size={14} /> Home
         </button>
 
-        <button
-          type="button"
-          id="nav-investigate"
-          className={`nav-tab ${pathname.startsWith('/investigate') ? 'active' : ''}`}
-          onClick={() => navigate('/investigate')}
-        >
-          <ShieldIcon size={14} /> Look into a case (Investigation &amp; Human Approval)
-        </button>
+        {!isAdmin && (
+          <>
+            <button
+              type="button"
+              id="nav-investigate"
+              className={`nav-tab ${pathname.startsWith('/investigate') ? 'active' : ''}`}
+              onClick={() => navigate('/investigate')}
+            >
+              <ShieldIcon size={14} /> Look into a case (Investigation &amp; Human Approval)
+            </button>
 
-        <button
-          type="button"
-          id="nav-cases"
-          className={`nav-tab ${pathname.startsWith('/cases') ? 'active' : ''}`}
-          onClick={() => navigate('/cases')}
-        >
-          <ClockIcon size={14} /> Past Cases
-        </button>
+            <button
+              type="button"
+              id="nav-cases"
+              className={`nav-tab ${pathname.startsWith('/cases') ? 'active' : ''}`}
+              onClick={() => navigate('/cases')}
+            >
+              <ClockIcon size={14} /> Past Cases
+            </button>
 
-        <button
-          type="button"
-          id="nav-audit"
-          className={`nav-tab ${pathname.startsWith('/trust') || pathname.startsWith('/audit') ? 'active' : ''}`}
-          onClick={() => navigate('/trust')}
-        >
-          <HashIcon size={14} /> Trust &amp; proof (Cryptographic Audit Trail)
-        </button>
+            <button
+              type="button"
+              id="nav-audit"
+              className={`nav-tab ${pathname.startsWith('/trust') || pathname.startsWith('/audit') ? 'active' : ''}`}
+              onClick={() => navigate('/trust')}
+            >
+              <HashIcon size={14} /> Trust &amp; proof (Cryptographic Audit Trail)
+            </button>
+          </>
+        )}
 
         <button
           type="button"
@@ -175,14 +181,16 @@ const AppLayout: React.FC = () => {
             <Route
               path="/"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <PersonaPickerView />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <HomeView
                     activePersona={activePersona}
                     onNavigateToNewCase={() => navigate('/investigate')}
                     onSelectCase={(wfId) => navigate(`/investigate/${wfId}`)}
                   />
-                ) : (
-                  <PersonaPickerView />
                 )
               }
             />
@@ -190,14 +198,16 @@ const AppLayout: React.FC = () => {
             <Route
               path="/home"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <PersonaPickerView />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <HomeView
                     activePersona={activePersona}
                     onNavigateToNewCase={() => navigate('/investigate')}
                     onSelectCase={(wfId) => navigate(`/investigate/${wfId}`)}
                   />
-                ) : (
-                  <PersonaPickerView />
                 )
               }
             />
@@ -205,15 +215,17 @@ const AppLayout: React.FC = () => {
             <Route
               path="/investigate"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <InvestigationConsole
                     scenarios={scenarios}
                     activePersona={activePersona}
                     workflow={currentWorkflow}
                     onWorkflowUpdated={setCurrentWorkflow}
                   />
-                ) : (
-                  <Navigate to="/login" replace />
                 )
               }
             />
@@ -221,15 +233,17 @@ const AppLayout: React.FC = () => {
             <Route
               path="/investigate/:workflowId"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <InvestigationConsole
                     scenarios={scenarios}
                     activePersona={activePersona}
                     workflow={currentWorkflow}
                     onWorkflowUpdated={setCurrentWorkflow}
                   />
-                ) : (
-                  <Navigate to="/login" replace />
                 )
               }
             />
@@ -237,34 +251,54 @@ const AppLayout: React.FC = () => {
             <Route
               path="/investigate/:workflowId/decide"
               element={
-                activePersona ? <DecisionView /> : <Navigate to="/login" replace />
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
+                  <DecisionView />
+                )
               }
             />
 
             <Route
               path="/cases"
               element={
-                activePersona ? <CasesListView /> : <Navigate to="/login" replace />
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
+                  <CasesListView />
+                )
               }
             />
 
             <Route
               path="/cases/:workflowId"
               element={
-                activePersona ? <CaseDetailView /> : <Navigate to="/login" replace />
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
+                  <CaseDetailView />
+                )
               }
             />
 
             <Route
               path="/trust"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <AuditExplorer
                     currentWorkflowId={currentWorkflow?.workflow_id || null}
                     activePersona={activePersona}
                   />
-                ) : (
-                  <Navigate to="/login" replace />
                 )
               }
             />
@@ -272,13 +306,15 @@ const AppLayout: React.FC = () => {
             <Route
               path="/trust/:workflowId"
               element={
-                activePersona ? (
+                !activePersona ? (
+                  <Navigate to="/login" replace />
+                ) : isAdmin ? (
+                  <AdminLandingView />
+                ) : (
                   <AuditExplorer
                     currentWorkflowId={null}
                     activePersona={activePersona}
                   />
-                ) : (
-                  <Navigate to="/login" replace />
                 )
               }
             />

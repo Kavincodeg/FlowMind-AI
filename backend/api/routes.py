@@ -282,6 +282,7 @@ def submit_workflow_decision(
                 "message": rbac_err.reason,
                 "user_role": rbac_err.user_role.value,
                 "action_type": rbac_err.action_type.value,
+                "required_roles": [r.value for r in rbac_err.required_roles],
             },
         )
 
@@ -439,8 +440,10 @@ async def get_benchmark_results(
         if report_json_path.exists() and not refresh:
             import json
             with open(report_json_path, "r", encoding="utf-8") as f:
-                _cached_benchmark_result = json.load(f)
-                return _cached_benchmark_result
+                loaded_data = json.load(f)
+                if isinstance(loaded_data, dict):
+                    _cached_benchmark_result = loaded_data
+                    return loaded_data
 
         from backend.retrieval.store import _get_dsn
         import psycopg2
@@ -461,6 +464,12 @@ async def get_benchmark_results(
 
         res = harness.run_comparative_benchmark()
         _cached_benchmark_result = res.model_dump()
+
+    if _cached_benchmark_result is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Benchmark result could not be generated.",
+        )
 
     return _cached_benchmark_result
 
@@ -659,66 +668,6 @@ def search_knowledge(
     summary="Get complete RBAC role-permission matrix",
 )
 def get_security_matrix(current_user: UserContext = Depends(get_current_user)) -> Dict[str, Any]:
-    """Retrieve full RBAC permission matrix, action sensitivity, and governance rules."""
-    from backend.security.models import UserRole
-    from backend.reasoning.models import ActionType
-
-    roles = [r.value for r in UserRole]
-    actions = [
-        {
-            "action_type": ActionType.RESOLVE_STANDARD.value,
-            "label": "Standard Resolution",
-            "tier": "Tier 1",
-            "sensitive": False,
-            "description": "Standard guidance, FAQ responses, or routine service fulfillment",
-            "authorized_roles": ["support_agent", "team_lead", "manager", "admin"],
-            "requires_approval": False,
-        },
-        {
-            "action_type": ActionType.REQUEST_CUSTOMER_INFO.value,
-            "label": "Request Additional Info",
-            "tier": "Tier 1",
-            "sensitive": False,
-            "description": "Inquire customer for invoice details, device logs, or clarifications",
-            "authorized_roles": ["support_agent", "team_lead", "manager", "admin"],
-            "requires_approval": False,
-        },
-        {
-            "action_type": ActionType.TRANSFER_TEAM.value,
-            "label": "Team Routing Transfer",
-            "tier": "Tier 2",
-            "sensitive": True,
-            "description": "Re-assign complaint to specialized operational queues (e.g. Engineering, Logistics)",
-            "authorized_roles": ["team_lead", "manager", "admin"],
-            "requires_approval": True,
-        },
-        {
-            "action_type": ActionType.ISSUE_REFUND_RECOMMENDATION.value,
-            "label": "Financial Refund Recommendation",
-            "tier": "Tier 3",
-            "sensitive": True,
-            "description": "Approve monetary credit or refund disbursement (threshold > $30 requires Manager)",
-            "authorized_roles": ["manager", "admin"],
-            "requires_approval": True,
-        },
-        {
-            "action_type": ActionType.ESCALATE_TICKET.value,
-            "label": "Hierarchical Escalation",
-            "tier": "Tier 2 - Tier 4",
-            "sensitive": True,
-            "description": "L1 (Team Lead), L2/L3 (Manager), L4 Executive (Admin)",
-            "authorized_roles": ["team_lead", "manager", "admin"],
-            "requires_approval": True,
-        },
-    ]
-
-    return {
-        "roles": roles,
-        "actions": actions,
-        "governance_rules": {
-            "rejection_rationale_mandatory": True,
-            "parameter_modification_enforced": True,
-            "server_token_resolution": True,
-            "hash_chain_immutability": True,
-        },
-    }
+    """Retrieve full RBAC permission matrix dynamically generated from authority.py."""
+    from backend.security.authority import get_security_matrix_data
+    return get_security_matrix_data()

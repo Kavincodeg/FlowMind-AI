@@ -22,6 +22,48 @@ export const getPlainActionLabel = (actionType: string): string => {
   return actionType.replace(/_/g, ' ').toLowerCase();
 };
 
+export const getEligibleApprovers = (
+  actionType: string,
+  parameters?: Record<string, unknown>
+): string[] => {
+  const norm = actionType.toUpperCase();
+  const amtRaw = parameters?.amount ?? parameters?.refund_amount;
+  const amount = amtRaw !== undefined && amtRaw !== null ? Number(amtRaw) : null;
+  const level = String(parameters?.escalation_level ?? parameters?.level ?? '').toUpperCase();
+
+  if (norm.includes('REFUND')) {
+    if (amount === null || isNaN(amount) || amount <= 0) {
+      return [];
+    }
+    if (amount <= 50) {
+      return ['support_agent', 'team_lead', 'team_manager', 'department_head', 'executive', 'finance_reviewer', 'vp_finance'];
+    }
+    if (amount <= 200) {
+      return ['team_lead', 'team_manager', 'department_head', 'executive', 'finance_reviewer', 'vp_finance'];
+    }
+    if (amount <= 500) {
+      return ['team_manager', 'department_head', 'executive', 'finance_reviewer', 'vp_finance'];
+    }
+    if (amount <= 1000) {
+      return ['finance_reviewer', 'vp_finance'];
+    }
+    return ['vp_finance'];
+  }
+
+  if (norm.includes('ESCALAT') || level) {
+    if (level === 'L4' || norm.includes('L4')) return ['executive'];
+    if (level === 'L3' || norm.includes('L3')) return ['department_head', 'executive'];
+    if (level === 'L2' || norm.includes('L2')) return ['team_manager', 'department_head', 'executive'];
+    return ['team_lead', 'team_manager', 'department_head', 'executive'];
+  }
+
+  if (norm.includes('TRANSFER')) {
+    return ['team_manager', 'department_head', 'executive'];
+  }
+
+  return ['support_agent', 'team_lead', 'team_manager', 'department_head', 'executive'];
+};
+
 export const ApprovalGate: React.FC<ApprovalGateProps> = ({
   workflow,
   activePersona,
@@ -43,6 +85,18 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
     workflow.status === 'EXECUTING';
   const isRejected = workflow.status === 'REJECTED';
   const isAbstained = workflow.status === 'ABSTAINED';
+
+  const amountVal = recommendation?.parameters?.amount ?? recommendation?.parameters?.refund_amount;
+  const hasAmount = amountVal !== undefined && amountVal !== null && !isNaN(Number(amountVal));
+  const numericAmount = hasAmount ? Number(amountVal) : null;
+
+  const levelVal = recommendation?.parameters?.escalation_level ?? recommendation?.parameters?.level;
+  const hasLevel = Boolean(levelVal);
+
+  const eligibleRoleKeys = recommendation
+    ? getEligibleApprovers(recommendation.action_type, recommendation.parameters)
+    : [];
+  const eligibleRoleTitles = eligibleRoleKeys.map((r) => getRolePlainTitle(r));
 
   const handleSubmit = async (decision: 'APPROVE' | 'REJECT' | 'MODIFY') => {
     setIsSubmitting(true);
@@ -82,13 +136,18 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
       onWorkflowUpdated(updated);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-        const roleTitle = getRolePlainTitle(activePersona.role);
-        // Use the real, case-specific denial reason from the backend 403 response (detail.message).
-        // err.message is pre-extracted from detail.message in api.ts, e.g. 'Requires Team Lead or above'.
-        const backendReason = err.message;
-        setRbacError(
-          `As a ${roleTitle}, you can't say yes to this one — ${backendReason}`
-        );
+        const detailObj =
+          typeof err.data === 'object' && err.data !== null && 'detail' in (err.data as any)
+            ? (err.data as any).detail
+            : err.data;
+        const requiredRoles: string[] = detailObj?.required_roles || [];
+        const requiredTitles = requiredRoles.map((r: string) => getRolePlainTitle(r)).join(', ');
+
+        let message = err.message;
+        if (requiredTitles && !message.includes(requiredTitles)) {
+          message += ` (Eligible approvers: ${requiredTitles})`;
+        }
+        setRbacError(message);
       } else if (err instanceof Error) {
         setRbacError(err.message);
       } else {
@@ -139,7 +198,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               padding: '1rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.5rem',
+              gap: '0.65rem',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -155,9 +214,48 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
               <span>{getPlainActionLabel(recommendation.action_type)}</span>
             </div>
 
-            <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-              Team handling this:{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>{recommendation.target_team || 'Customer Support Team'}</strong>
+            {/* Exact Action Parameters & Authority Boundary Grid */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '0.65rem',
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '0.75rem',
+                fontSize: '0.8rem',
+              }}
+            >
+              {hasAmount && (
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Exact Amount</div>
+                  <strong style={{ color: 'var(--brand-primary)', fontSize: '0.95rem' }}>
+                    ${numericAmount !== null ? numericAmount.toFixed(2) : '0.00'}
+                  </strong>
+                </div>
+              )}
+
+              {hasLevel && (
+                <div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Escalation Level</div>
+                  <strong style={{ color: 'var(--text-primary)' }}>{String(levelVal)}</strong>
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Target Team</div>
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  {recommendation.target_team || 'Customer Support Team'}
+                </strong>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Eligible Approvers</div>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: 500 }}>
+                  {eligibleRoleTitles.length > 0 ? eligibleRoleTitles.join(', ') : 'None (amount missing or invalid)'}
+                </span>
+              </div>
             </div>
 
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem' }}>
@@ -192,7 +290,7 @@ export const ApprovalGate: React.FC<ApprovalGateProps> = ({
                 <strong>Authorization Boundary Enforced</strong>
                 <div style={{ marginTop: '0.25rem', fontSize: '0.825rem', lineHeight: 1.45 }}>{rbacError}</div>
                 <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', opacity: 0.9 }}>
-                  Tip: Switch to a Manager or System Admin using the person selector at the top right to approve this.
+                  Tip: Switch to an eligible approver role using the persona selector at the top right.
                 </div>
               </div>
             </div>

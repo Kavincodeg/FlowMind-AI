@@ -122,6 +122,87 @@ export const GovernanceMatrixView: React.FC<GovernanceMatrixViewProps> = ({ acti
         </div>
       </div>
 
+      {/* Who Can Do What: Handbook Authority Breakdown for all 8 roles */}
+      <div className="console-panel">
+        <div className="panel-header">
+          <div>
+            <div className="panel-title">
+              <LockIcon size={16} /> Who Can Do What — Handbook Approval Authority
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Authority rules, escalation tiers, and refund limits enforced directly by <code>authority.py</code>.
+            </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '0.85rem',
+            marginTop: '0.5rem',
+          }}
+        >
+          {securityMatrix?.role_details && securityMatrix.role_details.length > 0 ? (
+            securityMatrix.role_details.map((rd) => (
+              <div
+                key={rd.role}
+                style={{
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  border: rd.role === activePersona.role ? '2px solid var(--brand-primary)' : '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                    {rd.title}
+                  </span>
+                  <span
+                    className={`badge ${
+                      rd.role === 'system_admin'
+                        ? 'badge-neutral'
+                        : rd.role.startsWith('vp_') || rd.role === 'executive'
+                        ? 'badge-warning'
+                        : 'badge-primary'
+                    }`}
+                    style={{ fontSize: '0.65rem' }}
+                  >
+                    {rd.role}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  <strong>May approve: </strong>{rd.plain_statement}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 'auto',
+                    paddingTop: '0.4rem',
+                    borderTop: '1px solid var(--border-subtle)',
+                    fontSize: '0.72rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span>Refund limit:</span>
+                  <strong style={{ color: rd.refund_limit && rd.refund_limit > 0 ? 'var(--status-success-text)' : 'var(--text-muted)' }}>
+                    {rd.refund_limit_display}
+                  </strong>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading role authority...</div>
+          )}
+        </div>
+      </div>
+
       {/* Primary RBAC Permissions Matrix Table */}
       <div className="console-panel">
         <div className="panel-header">
@@ -138,20 +219,30 @@ export const GovernanceMatrixView: React.FC<GovernanceMatrixViewProps> = ({ acti
             <thead>
               <tr>
                 <th>Workflow Action</th>
-                <th>Tier / Sensitivity</th>
-                <th>Support Agent</th>
-                <th>Team Lead</th>
-                <th>Manager</th>
-                <th>Admin</th>
-                <th>Approval Gate</th>
+                <th>Tier</th>
+                <th title="Support Agent">Agent</th>
+                <th title="Team Lead">Lead</th>
+                <th title="Team Manager">Manager</th>
+                <th title="Department Head">Dept Head</th>
+                <th title="Executive">Exec</th>
+                <th title="Finance Reviewer">Finance</th>
+                <th title="VP Finance">VP Fin</th>
+                <th title="System Admin">Admin</th>
+                <th>Gate</th>
               </tr>
             </thead>
             <tbody>
               {securityMatrix?.actions.map((act: ActionPermission) => {
-                const canAgent = act.authorized_roles.includes('support_agent');
-                const canLead = act.authorized_roles.includes('team_lead');
-                const canManager = act.authorized_roles.includes('manager');
-                const canAdmin = act.authorized_roles.includes('admin');
+                const roles = [
+                  'support_agent',
+                  'team_lead',
+                  'team_manager',
+                  'department_head',
+                  'executive',
+                  'finance_reviewer',
+                  'vp_finance',
+                  'system_admin',
+                ];
 
                 return (
                   <tr key={act.action_type}>
@@ -160,10 +251,6 @@ export const GovernanceMatrixView: React.FC<GovernanceMatrixViewProps> = ({ acti
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                         {act.description}
                       </div>
-                      <details style={{ marginTop: '0.25rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        <summary style={{ cursor: 'pointer' }}>Technical identifier</summary>
-                        <code>{act.action_type}</code>
-                      </details>
                     </td>
 
                     <td>
@@ -172,62 +259,27 @@ export const GovernanceMatrixView: React.FC<GovernanceMatrixViewProps> = ({ acti
                       </span>
                     </td>
 
-                    {/* Support Agent */}
-                    <td>
-                      {canAgent ? (
-                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <CheckCircleIcon size={11} /> Authorized
-                        </span>
-                      ) : (
-                        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <XCircleIcon size={11} /> Denied
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Team Lead */}
-                    <td>
-                      {canLead ? (
-                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <CheckCircleIcon size={11} /> Authorized
-                        </span>
-                      ) : (
-                        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <XCircleIcon size={11} /> Denied
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Manager */}
-                    <td>
-                      {canManager ? (
-                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <CheckCircleIcon size={11} /> Authorized
-                        </span>
-                      ) : (
-                        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <XCircleIcon size={11} /> Denied
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Admin */}
-                    <td>
-                      {canAdmin ? (
-                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <CheckCircleIcon size={11} /> Authorized
-                        </span>
-                      ) : (
-                        <span className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <XCircleIcon size={11} /> Denied
-                        </span>
-                      )}
-                    </td>
+                    {roles.map((r) => {
+                      const isAllowed = act.authorized_roles.includes(r);
+                      return (
+                        <td key={r} style={{ textAlign: 'center' }}>
+                          {isAllowed ? (
+                            <span className="badge badge-success" style={{ padding: '0.2rem 0.35rem', fontSize: '0.65rem' }}>
+                              <CheckCircleIcon size={10} />
+                            </span>
+                          ) : (
+                            <span className="badge badge-danger" style={{ padding: '0.2rem 0.35rem', fontSize: '0.65rem', opacity: 0.7 }}>
+                              <XCircleIcon size={10} />
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
 
                     {/* Approval Requirement */}
                     <td>
-                      <span className={`badge ${act.requires_approval ? 'badge-warning' : 'badge-neutral'}`}>
-                        {act.requires_approval ? 'Human Approval Required' : 'Auto-Executable'}
+                      <span className={`badge ${act.requires_approval ? 'badge-warning' : 'badge-neutral'}`} style={{ fontSize: '0.7rem' }}>
+                        {act.requires_approval ? 'Approval Required' : 'Auto-Executable'}
                       </span>
                     </td>
                   </tr>

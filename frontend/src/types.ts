@@ -321,8 +321,19 @@ export interface ActionPermission {
   requires_approval: boolean;
 }
 
+export interface RoleAuthorityDetail {
+  role: string;
+  title: string;
+  plain_statement: string;
+  refund_limit: number | null;
+  refund_limit_display: string;
+  can_escalate: boolean;
+  can_standard_resolve: boolean;
+}
+
 export interface SecurityMatrixResponse {
   roles: string[];
+  role_details?: RoleAuthorityDetail[];
   actions: ActionPermission[];
   governance_rules: {
     rejection_rationale_mandatory: boolean;

@@ -210,6 +210,14 @@ class SecurityActionRule(BaseModel):
     requires_approval: bool
 
 
+class RoleAuthorityDetail(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    role: str
+    title: str
+    may_approve: str
+    refund_limit: Optional[str] = None
+
+
 class GovernanceRulesResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     rejection_rationale_mandatory: bool = True
@@ -222,5 +230,6 @@ class SecurityMatrixResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
     roles: List[str]
     actions: List[SecurityActionRule]
+    role_details: List[RoleAuthorityDetail] = Field(default_factory=list)
     governance_rules: GovernanceRulesResponse = Field(default_factory=GovernanceRulesResponse)
 
