@@ -142,3 +142,26 @@ class ReasoningOutput(BaseModel):
     @property
     def citation_labels(self) -> List[str]:
         return [c.citation_label for c in self.citations]
+
+
+class ProposedAction(BaseModel):
+    """
+    Phase 3 Action Schema: Structured proposed action model.
+    Tracks action type, params, evidence citations, confidence, risk level, and lifecycle status.
+    Enforces that every proposed action must cite retrieved chunks; uncited actions are rejected by schema.
+    """
+    model_config = ConfigDict(extra="ignore")
+
+    action_type: ActionType
+    params: Dict[str, Any] = Field(default_factory=dict)
+    evidence_citations: List[Any] = Field(default_factory=list)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    risk_level: str = "medium"
+    status: str = "proposed"  # proposed / approved / rejected / executed / failed
+
+    @model_validator(mode="after")
+    def validate_citations_present(self) -> ProposedAction:
+        """Every proposed action must cite retrieved chunks; uncited actions are rejected by schema."""
+        if not self.evidence_citations:
+            raise ValueError("Every proposed action must cite retrieved evidence chunks. Uncited actions are rejected by schema.")
+        return self

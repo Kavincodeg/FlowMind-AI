@@ -9,8 +9,9 @@ import re
 from typing import Any, Dict, List
 
 INJECTION_PATTERNS = [
-    r"ignore\s+(all\s+)?previous\s+instructions",
+    r"ignore\s+(all\s+)?(previous\s+instructions|policies)",
     r"override\s+(the\s+)?system",
+    r"system\s+override",
     r"grant\s+\$?\d+[\d,]*\s*(refund|credit)\s+immediately",
     r"bypass\s+(the\s+)?(approval|routing)",
     r"you\s+are\s+now\s+in\s+developer\s+mode",
