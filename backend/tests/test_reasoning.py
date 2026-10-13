@@ -520,7 +520,7 @@ class TestBenchmarkCases:
                 elif "charged twice" in q or "duplicate" in q:
                     chunks.append(make_dummy_chunk(
                         "ticket", "TKT-0008", 0,
-                        "Customer charged twice for subscription. Billing dispute.",
+                        "Customer charged twice for subscription ($49.00 duplicate charge). Billing dispute.",
                     ))
                 elif "legal action" in q or "lawyer" in q:
                     chunks.append(make_dummy_chunk(

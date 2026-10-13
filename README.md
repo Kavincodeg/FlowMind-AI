@@ -257,7 +257,20 @@ All tests are verified and passing:
 
 | Test Layer | Test Command | Passed | Failed | Description |
 |---|---|:---:|:---:|---|
-| **Backend Unit Tests** | `pytest backend/tests/ -v` | **110** | 0 | Pure-logic tests covering reasoning, guardrails, RBAC matrix, orchestrator, baseline, evaluation invariants, and 15 SHA-256 audit chain determinism/tamper tests |
+| **Backend Unit Tests** | `pytest backend/tests/ -v` | **296** | 0 | Pure-logic tests covering reasoning, guardrails, 8-role RBAC matrix, auto-execution 5-condition gates, refund traceability, orchestrator, baseline, evaluation invariants, and 15 SHA-256 audit chain determinism/tamper tests |
 | **Backend Integration Tests** | `pytest -m integration -v` | **9** | 0 | Real pgvector vector search, HNSW retrieval, score thresholding, precision/recall, and latency against live PostgreSQL |
 | **Frontend Playwright E2E** | `npx playwright test` | **14** | 0 | Full browser tests: scenarios, persona switching, human approval, rejection rationale, injection defense, and cryptographic hash chain inspection |
-| **Total Verified Tests** | | **133** | **0** | **Complete green suite across all system layers** |
+| **Total Verified Tests** | | **319** | **0** | **Complete green suite across all system layers** |
+
+---
+
+## Handbook Policies Not Yet Enforced
+
+The following operational provisions from the Customer Query Handling Policy and Approval Authority Matrix are defined in documentation but are scheduled for implementation in later phases:
+
+1. **Receiving team manager's second approval on cross-team transfers**: Two-stage handshake requiring explicit concurrence from the receiving department before reassignment completes.
+2. **Refund-splitting detection across cases**: Cross-case velocity heuristic to identify partitioned refund requests intended to evade single-transaction authorization limits.
+3. **Automatic escalation of overdue approvals**: Background worker monitoring SLA deadlines and bumping pending approvals up the hierarchy when time elapsed exceeds policy limits.
+4. **Delegation**: Temporary assignment of approval authority to a designated peer during manager absence.
+5. **Emergency authorisation**: Break-glass protocol for urgent customer relief during critical service outages.
+6. **Weekly 10 percent review of automatic executions**: Sampling and audit pipeline to select 10% of autonomous actions for retrospective manager verification.
