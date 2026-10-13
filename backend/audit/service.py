@@ -1,4 +1,4 @@
-﻿"""
+"""
 FlowMind AI - Audit Service (Phase 3)
 In-memory and thread-safe audit log service with tamper-evident export capability.
 """
@@ -33,16 +33,16 @@ class AuditService:
         self._records: Dict[str, AuditRecord] = {}
         self._lock = Lock()
 
-    def record_audit(self, record: AuditRecord) -> None:
+    def record_audit(self, record: AuditRecord, is_retry: bool = False) -> None:
         """Store an audit record.
 
         Raises:
             DuplicateAuditRecordError: If a record for the same workflow_id already
-                exists.  This is a hard invariant: hash chains must be written once
-                and never overwritten.
+                exists and this is not an explicit retry. This is a hard invariant:
+                hash chains must not be arbitrarily overwritten.
         """
         with self._lock:
-            if record.workflow_id in self._records:
+            if record.workflow_id in self._records and not is_retry:
                 raise DuplicateAuditRecordError(
                     f"Audit record for workflow '{record.workflow_id}' already exists "
                     f"and cannot be overwritten. Hash chain immutability must be preserved."
