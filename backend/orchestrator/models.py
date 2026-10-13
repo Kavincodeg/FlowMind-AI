@@ -44,6 +44,8 @@ class ApprovalSubmission(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     decision: ApprovalDecisionType
+    action_id: Optional[str] = None
+    version: Optional[int] = None
     rejection_reason: Optional[str] = None
     modified_action: Optional[NextBestAction] = None
     comments: Optional[str] = None
@@ -58,6 +60,8 @@ class WorkflowInstance(BaseModel):
     workflow_id: str
     status: WorkflowStatus
     started_at: str
+    version: int = 1
+    action_id: Optional[str] = None
     started_by: Optional[str] = None
     approval_due_at: Optional[str] = None
     completed_at: Optional[str] = None
