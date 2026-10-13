@@ -18,6 +18,7 @@ from backend.connectors.base import (
     ExecutionRequest,
     ExecutionResult,
     UnauthorizedExecutionError,
+    verify_execution_token,
 )
 from backend.reasoning.models import ActionType
 
@@ -41,15 +42,15 @@ class MockEnterpriseConnector(EnterpriseConnector):
         """
         t0 = time.perf_counter()
 
-        # 1. Non-negotiable security guard: verify authorization
-        if not request.is_auto_executed and not request.approval_token:
-            logger.error("Blocked execution attempt without approval token: workflow=%s", request.workflow_id)
+        # 1. Non-negotiable security guard: verify authorization token from orchestrator
+        if not verify_execution_token(request):
+            logger.error("Blocked unauthorized/direct execution attempt: workflow=%s", request.workflow_id)
             raise UnauthorizedExecutionError(
                 f"Action '{request.action.action_type.value}' cannot execute without human approval verification."
             )
 
-        # 2. Idempotency check: Return existing result if already executed
-        if request.workflow_id in self._execution_history:
+        # 2. Idempotency check: Return existing result if already executed (skip for dry-run)
+        if not request.dry_run and request.workflow_id in self._execution_history:
             existing = self._execution_history[request.workflow_id]
             logger.info("Idempotent replay for workflow %s: returning transaction %s", request.workflow_id, existing.transaction_id)
             return ExecutionResult(
@@ -85,7 +86,7 @@ class MockEnterpriseConnector(EnterpriseConnector):
                 latency_ms=round(elapsed_ms, 2),
                 is_idempotent_replay=False,
             )
-            self._execution_history[request.workflow_id] = failed_result
+            # Do NOT store failed executions in idempotency history so action can be safely retried
             return failed_result
 
         # 5. Route to simulated subsystems
@@ -142,6 +143,10 @@ class MockEnterpriseConnector(EnterpriseConnector):
                 "target_team": request.action.target_team,
             }
 
+        if request.dry_run:
+            details["dry_run"] = True
+            details["state_change"] = False
+
         elapsed_ms = (time.perf_counter() - t0) * 1000
         result = ExecutionResult(
             workflow_id=request.workflow_id,
@@ -155,6 +160,7 @@ class MockEnterpriseConnector(EnterpriseConnector):
             is_idempotent_replay=False,
         )
 
-        # Store in idempotency history
-        self._execution_history[request.workflow_id] = result
+        # Store in idempotency history only if not a dry-run
+        if not request.dry_run:
+            self._execution_history[request.workflow_id] = result
         return result
