@@ -408,6 +408,7 @@ def _format_workflow_response(instance: WorkflowInstance) -> Dict[str, Any]:
         } if ro else None,
         "approval_record": instance.approval_record,
         "execution_record": instance.execution_record.model_dump() if instance.execution_record else None,
+        "auto_execution_check": instance.auto_execution_check,
         "error_message": instance.error_message,
     }
 
