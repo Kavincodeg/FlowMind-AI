@@ -41,13 +41,14 @@ Structured reasoning with strict safety guardrails:
 - **Adversarial Injection Defense**: Code-level and prompt-level detection scanner rejecting prompt injection and privilege-escalation payloads.
 - **Plain-RAG Baseline**: Unconstrained comparator implementing standard RAG without hallucination verification, injection screening, or abstention logic for empirical ablation.
 
-### Phase 3: Orchestration, Governance, Connectors & Audit
+### Phase 3: Orchestration, Governance, Connectors & Audit (COMPLETED & HARDENED)
 Closed-loop workflow execution and governance:
-- **State Machine Orchestrator**: Manages workflow instances across explicit states (`RECEIVED` → `RETRIEVING` → `REASONING` → `PENDING_APPROVAL` / `AUTO_EXECUTED` → `APPROVED_EXECUTED` / `REJECTED` / `ABSTAINED` / `FAILED`).
-- **Role-Based Access Control (RBAC)**: Enforces permission boundaries across four personas (`support_agent`, `team_lead`, `manager`, `admin`). Resolves user identities strictly server-side from bearer tokens to prevent client header forgery. Unauthorized modifications or approvals raise `RBACPermissionDeniedError`.
-- **Human Approval Gate**: Reviewers can approve, reject (with mandatory rationale), or modify action parameters prior to dispatch.
-- **Connectors**: Dispatches approved actions to external systems with transaction IDs and latency measurements.
-- **Audit Service**: Write-once audit persistence guarded by `DuplicateAuditRecordError` preventing overwriting or re-computation.
+- **State Machine Orchestrator**: Manages workflow instances across explicit states (`RECEIVED` → `RETRIEVING` → `REASONING` → `PENDING_APPROVAL` / `AUTO_EXECUTED` → `APPROVED_EXECUTED` / `REJECTED` / `ABSTAINED` / `FAILED`). Thread-safe reentrant lock (`_lock`) guards concurrent state transitions.
+- **Role-Based Access Control (RBAC)**: Enforces permission boundaries across all 8 enterprise personas. Self-approval strictly prohibited; dynamic time-of-use re-checking prevents stale credential exploitation. System admins barred from case approvals (HTTP 403).
+- **Human Approval Gate**: Reviewers can approve, reject (with mandatory rationale), or modify action parameters prior to dispatch. Action ID and monotonic workflow versions prevent forged or out-of-order submissions.
+- **Connectors**: Enterprise action execution layer with HMAC-SHA256 authorization tokens preventing unauthorized direct bypass, dry-run simulation mode, and clean failure retry handling.
+- **Audit Service**: Write-once audit persistence guarded by `DuplicateAuditRecordError` preventing overwriting or re-computation. Genuine SHA-256 block-chained entries detecting edits, deletions, reordering, and insertions. Atomic rollback restores pending state on persistence errors.
+- *Hardening Pass Details*: See [HARDENING.md](file:///c:/Users/Kavin/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/FP/HARDENING.md) for the full audit report, bugs resolved, and 33 adversarial tests.
 
 ### Phase 4: Comparative Empirical Evaluation & Truthful Benchmarks
 Automated benchmark and evaluation harness with truthful execution disclosures:
@@ -257,10 +258,10 @@ All tests are verified and passing:
 
 | Test Layer | Test Command | Passed | Failed | Description |
 |---|---|:---:|:---:|---|
-| **Backend Unit Tests** | `pytest backend/tests/ -v` | **296** | 0 | Pure-logic tests covering reasoning, guardrails, 8-role RBAC matrix, auto-execution 5-condition gates, refund traceability, orchestrator, baseline, evaluation invariants, and 15 SHA-256 audit chain determinism/tamper tests |
+| **Backend Unit Tests** | `pytest backend/tests/ -v` | **329** | 0 | Pure-logic tests covering reasoning, guardrails, 8-role RBAC matrix, auto-execution 5-condition gates, refund traceability, orchestrator, baseline, evaluation invariants, 15 SHA-256 audit chain determinism/tamper tests, and 33 Phase 3 adversarial hardening tests |
 | **Backend Integration Tests** | `pytest -m integration -v` | **9** | 0 | Real pgvector vector search, HNSW retrieval, score thresholding, precision/recall, and latency against live PostgreSQL |
 | **Frontend Playwright E2E** | `npx playwright test` | **14** | 0 | Full browser tests: scenarios, persona switching, human approval, rejection rationale, injection defense, and cryptographic hash chain inspection |
-| **Total Verified Tests** | | **319** | **0** | **Complete green suite across all system layers** |
+| **Total Verified Tests** | | **352** | **0** | **Complete green suite across all system layers** |
 
 ---
 
