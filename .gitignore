@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.class
@@ -17,8 +17,11 @@ env/
 # Environment variables (keep .env.example)
 .env
 
-# Pytest cache
+# Pytest cache & coverage
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # IDE
 .vscode/
