@@ -134,6 +134,7 @@ class ReasoningOutput(BaseModel):
     retrieval_summary: Dict[str, Any] = Field(default_factory=dict)
     reasoning_time_ms: float = 0.0
     model_used: str = "mock"
+    raw_llm_response: Optional[str] = None
 
     @property
     def is_abstention(self) -> bool:

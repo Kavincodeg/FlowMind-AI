@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 import uuid
 
@@ -239,7 +239,16 @@ class TestReasoningGuardrails:
     def test_human_approval_enforced_on_sensitive_action(self):
         # Ensure that even if LLM tried to set requires_approval=False, engine forces it True
         class RogueProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return json.dumps({
                     "status": "RECOMMENDATION_READY",
                     "customer_summary": "Test",
@@ -274,7 +283,16 @@ class TestReasoningGuardrails:
         call_count = 0
 
         class FlakyJSONProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
@@ -312,7 +330,16 @@ class TestReasoningGuardrails:
     def test_json_retry_fails_both_attempts_returns_error(self):
         """Simulate LLM failing JSON parsing on both initial and retry attempts."""
         class BrokenJSONProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return "Still completely broken non-JSON text output."
 
         dummy_retriever = lambda q: make_dummy_retrieval_result(
@@ -329,7 +356,16 @@ class TestReasoningGuardrails:
     def test_rationale_referencing_stripped_citation_triggers_integrity_failure(self):
         """Induce hallucinated citation referenced in rationale; assert CITATION_INTEGRITY_FAILURE."""
         class HallucinatingRationaleProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return json.dumps({
                     "status": "RECOMMENDATION_READY",
                     "customer_summary": "Customer complaint.",
@@ -370,7 +406,16 @@ class TestReasoningGuardrails:
     def test_code_level_injection_detection_independent_of_provider(self):
         """Code-level scanner in engine.py detects adversarial patterns even if LLM reports False."""
         class ObliviousProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return json.dumps({
                     "status": "RECOMMENDATION_READY",
                     "customer_summary": "Customer complaint.",
@@ -409,7 +454,16 @@ class TestReasoningGuardrails:
     def test_omitted_confidence_score_defaults_to_zero_and_abstains(self):
         """When model omits confidence_score, do not assume 0.8; default to 0.0 and abstain with LOW_CONFIDENCE."""
         class OmittedConfidenceProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return json.dumps({
                     "status": "RECOMMENDATION_READY",
                     "customer_summary": "Customer complaint.",
@@ -445,7 +499,16 @@ class TestReasoningGuardrails:
     def test_selective_approval_gating_standard_vs_sensitive(self):
         """Standard resolutions (RESOLVE_STANDARD) can execute directly, while sensitive actions strictly require approval."""
         class StandardActionProvider(LLMProvider):
-            def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+            def generate(
+                self,
+                prompt: str,
+                system_prompt: str,
+                temperature: float = 0.0,
+                max_tokens: Optional[int] = None,
+                response_schema: Optional[Any] = None,
+                *args: Any,
+                **kwargs: Any,
+            ) -> str:
                 return json.dumps({
                     "status": "RECOMMENDATION_READY",
                     "customer_summary": "Customer asking for password reset link.",

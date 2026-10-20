@@ -22,7 +22,14 @@ class LLMProvider(abc.ABC):
     """Abstract interface for LLM text generation."""
 
     @abc.abstractmethod
-    def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
+    ) -> str:
         """Generate response text for the given user prompt and system instructions."""
         pass
 
@@ -47,7 +54,14 @@ class MockLLMProvider(LLMProvider):
         r"do\s+not\s+follow\s+any\s+policy",
     ]
 
-    def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
+    ) -> str:
         """Analyze prompt contents and synthesize an evidence-grounded response."""
         # Check if caller is requesting plain-RAG baseline answer
         if "customer support assistant" in system_prompt.lower() or "retrieved context:" in prompt.lower():
@@ -652,26 +666,335 @@ class GeminiLLMProvider(LLMProvider):
 
 
 # ============================================================
+# Prompt Truncation Exception
+# ============================================================
+
+class PromptTruncationError(RuntimeError):
+    """Raised when prompt tokens + num_predict approach or exceed num_ctx context window."""
+    pass
+
+
+# ============================================================
+# Ollama Local LLM Provider
+# ============================================================
+
+class OllamaLLMProvider(LLMProvider):
+    """
+    Local-first LLM Provider running via Ollama.
+    Features:
+      - JSON-constrained structured output (Ollama format / JSON schema)
+      - Pydantic schema validation & schema_deviation tracking
+      - Explicit num_ctx >= 8192 enforcement
+      - Truncation guard: aborts if prompt_eval_count + num_predict >= num_ctx
+      - Two-pass memory management: unload() evicts model from GPU VRAM (keep_alive: 0)
+      - Zero monetary cost accounting ($0.00)
+      - 5-class failure classification matching the benchmark standard
+    """
+
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        model: Optional[str] = None,
+        num_ctx: int = 8192,
+        num_predict: int = 2048,
+        temperature: float = 0.3,
+        seed: Optional[int] = 42,
+    ):
+        self.host = (host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")).rstrip("/")
+        self.model = model or os.environ.get("GEN_MODEL", "llama3.1:8b")
+        if num_ctx < 8192:
+            raise ValueError(f"num_ctx must be at least 8192 as required by evaluation protocol, got {num_ctx}")
+        self.num_ctx = num_ctx
+        self.num_predict = num_predict
+        self.temperature = temperature
+        self.seed = seed
+
+        # Token & cost accumulator
+        self.total_prompt_tokens = 0
+        self.total_candidates_tokens = 0
+        self.total_thoughts_tokens = 0
+        self.total_cost_usd = 0.0
+        self.schema_deviation_count = 0
+        self.truncation_guard_trips = 0
+        self.last_result: Optional[LLMGenerationResult] = None
+
+    def unload(self) -> bool:
+        """Evict model from GPU VRAM by setting keep_alive to 0."""
+        import urllib.request
+        try:
+            req_data = json.dumps({"model": self.model, "keep_alive": 0}).encode("utf-8")
+            req = urllib.request.Request(
+                f"{self.host}/api/generate",
+                data=req_data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                success = resp.status == 200
+                if success:
+                    logger.info("Evicted model '%s' from GPU VRAM (keep_alive: 0).", self.model)
+                return success
+        except Exception as exc:
+            logger.warning("Failed to unload model %s from VRAM: %s", self.model, exc)
+            return False
+
+    def generate_detailed(
+        self,
+        prompt: str,
+        system_prompt: str = "",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
+        json_mode: bool = True,
+    ) -> LLMGenerationResult:
+        """
+        Execute request against Ollama /api/generate with retry, truncation guard,
+        and JSON schema enforcement.
+        """
+        import urllib.request
+        import urllib.error
+
+        t_eff = self.temperature if temperature is None else temperature
+        pred_eff = max_tokens or self.num_predict
+
+        options: Dict[str, Any] = {
+            "temperature": t_eff,
+            "num_ctx": self.num_ctx,
+            "num_predict": pred_eff,
+        }
+        if self.seed is not None:
+            options["seed"] = self.seed
+
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "system": system_prompt or "",
+            "stream": False,
+            "options": options,
+        }
+
+        if json_mode:
+            if response_schema:
+                if hasattr(response_schema, "model_json_schema"):
+                    payload["format"] = response_schema.model_json_schema()
+                elif isinstance(response_schema, dict):
+                    payload["format"] = response_schema
+                else:
+                    payload["format"] = "json"
+            else:
+                payload["format"] = "json"
+
+        max_retries = 3
+        base_delay = 1.0
+
+        for attempt in range(max_retries + 1):
+            t0 = time.perf_counter()
+            try:
+                req_data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(
+                    f"{self.host}/api/generate",
+                    data=req_data,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=180) as resp:
+                    resp_body = resp.read().decode("utf-8")
+                    data = json.loads(resp_body)
+
+                latency = (time.perf_counter() - t0) * 1000.0
+                raw_text = data.get("response", "").strip()
+                p_toks = data.get("prompt_eval_count", 0)
+                c_toks = data.get("eval_count", 0)
+
+                # Update token accumulators
+                self.total_prompt_tokens += p_toks
+                self.total_candidates_tokens += c_toks
+
+                # Truncation Guard: Check if prompt tokens + num_predict approach num_ctx
+                if (p_toks + pred_eff) >= self.num_ctx or p_toks >= self.num_ctx:
+                    self.truncation_guard_trips += 1
+                    err_msg = (
+                        f"PROMPT TRUNCATION GUARD TRIGGERED: prompt tokens ({p_toks}) + num_predict "
+                        f"({pred_eff}) >= context window num_ctx ({self.num_ctx}). "
+                        f"Prompt is at imminent risk of truncation."
+                    )
+                    logger.error(err_msg)
+                    raise PromptTruncationError(err_msg)
+
+                # Check refusal heuristic
+                lower_text = raw_text.lower()
+                is_refusal = (
+                    any(p in lower_text for p in [
+                        "i cannot fulfill",
+                        "i am unable to assist",
+                        "i cannot assist",
+                        "as an ai assistant, i cannot",
+                        "violates safety guidelines",
+                    ])
+                    and not (raw_text.startswith("{") and raw_text.endswith("}"))
+                )
+
+                if is_refusal:
+                    res = LLMGenerationResult(
+                        text=raw_text,
+                        status="model_refusal",
+                        prompt_tokens=p_toks,
+                        candidates_tokens=c_toks,
+                        thoughts_tokens=0,
+                        total_tokens=p_toks + c_toks,
+                        finish_reason="STOP",
+                        latency_ms=latency,
+                        cost_usd=0.0,
+                    )
+                    self.last_result = res
+                    return res
+
+                # Check JSON validity if json_mode
+                if json_mode:
+                    try:
+                        parsed = json.loads(raw_text)
+                        # Pydantic schema validation if provided
+                        if response_schema and hasattr(response_schema, "model_validate"):
+                            try:
+                                response_schema.model_validate(parsed)
+                            except Exception as val_err:
+                                self.schema_deviation_count += 1
+                                logger.warning("Schema deviation detected: %s", val_err)
+                                res = LLMGenerationResult(
+                                    text=raw_text,
+                                    status="parse_failure",
+                                    prompt_tokens=p_toks,
+                                    candidates_tokens=c_toks,
+                                    thoughts_tokens=0,
+                                    total_tokens=p_toks + c_toks,
+                                    finish_reason="STOP",
+                                    error_message=f"Schema validation error: {val_err}",
+                                    latency_ms=latency,
+                                    cost_usd=0.0,
+                                )
+                                self.last_result = res
+                                return res
+
+                    except Exception as j_err:
+                        res = LLMGenerationResult(
+                            text=raw_text,
+                            status="parse_failure",
+                            prompt_tokens=p_toks,
+                            candidates_tokens=c_toks,
+                            thoughts_tokens=0,
+                            total_tokens=p_toks + c_toks,
+                            finish_reason="STOP",
+                            error_message=f"JSON decoding failed: {j_err}",
+                            latency_ms=latency,
+                            cost_usd=0.0,
+                        )
+                        self.last_result = res
+                        return res
+
+                res = LLMGenerationResult(
+                    text=raw_text,
+                    status="ok",
+                    prompt_tokens=p_toks,
+                    candidates_tokens=c_toks,
+                    thoughts_tokens=0,
+                    total_tokens=p_toks + c_toks,
+                    finish_reason="STOP",
+                    latency_ms=latency,
+                    cost_usd=0.0,
+                )
+                self.last_result = res
+                return res
+
+            except PromptTruncationError:
+                raise
+            except Exception as exc:
+                latency = (time.perf_counter() - t0) * 1000.0
+                if attempt < max_retries:
+                    sleep_time = min(10.0, base_delay * (2 ** attempt))
+                    logger.warning(
+                        "Ollama call failed (%s); retrying in %.2fs (attempt %d/%d)...",
+                        exc, sleep_time, attempt + 1, max_retries
+                    )
+                    time.sleep(sleep_time)
+                else:
+                    res = LLMGenerationResult(
+                        text="",
+                        status="api_error",
+                        prompt_tokens=0,
+                        candidates_tokens=0,
+                        thoughts_tokens=0,
+                        total_tokens=0,
+                        finish_reason="ERROR",
+                        error_message=str(exc),
+                        latency_ms=latency,
+                        cost_usd=0.0,
+                    )
+                    self.last_result = res
+                    return res
+
+        return res
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
+    ) -> str:
+        """Standard interface returning string, auto-detecting JSON requirement."""
+        expects_json = (
+            response_schema is not None
+            or "JSON" in prompt
+            or (system_prompt is not None and "JSON" in system_prompt)
+        )
+        res = self.generate_detailed(
+            prompt=prompt,
+            system_prompt=system_prompt or "",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_schema=response_schema,
+            json_mode=expects_json,
+        )
+        if res.status == "api_error":
+            raise RuntimeError(f"Ollama generation failed: {res.error_message}")
+        return res.text
+
+
+# Backwards compatibility alias
+AnthropicLLMProvider = MockLLMProvider
+
+
+# ============================================================
 # Provider Factory
 # ============================================================
 
 def get_llm_provider(provider_type: Optional[str] = None) -> LLMProvider:
     """
     Factory function returning the configured LLMProvider instance.
-    Defaults to GeminiLLMProvider when GEMINI_API_KEY is present.
-    Defaults to MockLLMProvider when provider is 'mock' or when API key is missing.
+    Defaults to OllamaLLMProvider (local-first, zero cost).
+    Falls back to GeminiLLMProvider when provider is 'gemini'.
+    Falls back to MockLLMProvider when provider is 'mock'.
     """
-    choice = provider_type or os.environ.get("LLM_PROVIDER", "").lower()
+    choice = (provider_type or os.environ.get("LLM_PROVIDER", "ollama")).lower()
 
     if choice == "mock":
         return MockLLMProvider()
 
-    if choice == "gemini" or os.environ.get("GEMINI_API_KEY"):
+    if choice == "gemini":
         try:
             return GeminiLLMProvider()
         except Exception as e:
             logger.warning("Failed to initialize Gemini provider (%s), falling back to mock.", e)
             return MockLLMProvider()
 
-    return MockLLMProvider()
+    if choice == "ollama":
+        try:
+            return OllamaLLMProvider()
+        except Exception as e:
+            logger.warning("Failed to initialize Ollama provider (%s), falling back to mock.", e)
+            return MockLLMProvider()
+
+    return OllamaLLMProvider()
+
 

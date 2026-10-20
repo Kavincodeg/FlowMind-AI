@@ -64,6 +64,7 @@ class WorkflowOrchestrator:
         self,
         request: ComplaintInvestigationRequest,
         requester: UserContext,
+        precomputed_raw_response: Optional[str] = None,
     ) -> WorkflowInstance:
         """
         Initiate a complaint investigation workflow.
@@ -90,7 +91,9 @@ class WorkflowOrchestrator:
         logger.info("Workflow %s: Investigating complaint for customer=%s", workflow_id, request.customer_id)
 
         # 2. Invoke Phase 2 Reasoning Engine
-        reasoning_output = self.reasoning_engine.investigate(request)
+        reasoning_output = self.reasoning_engine.investigate(
+            request, precomputed_raw_response=precomputed_raw_response
+        )
         instance.reasoning_output = reasoning_output
 
         # 3. Handle Terminal Abstention

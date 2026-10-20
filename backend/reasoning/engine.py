@@ -49,13 +49,17 @@ class ReasoningEngine:
         self.llm_provider = llm_provider or get_llm_provider()
         self.enable_grounding_verification = enable_grounding_verification
 
-    def investigate(self, request: ComplaintInvestigationRequest) -> ReasoningOutput:
+    def investigate(
+        self,
+        request: ComplaintInvestigationRequest,
+        precomputed_raw_response: Optional[str] = None,
+    ) -> ReasoningOutput:
         """
         Execute an end-to-end investigation of a customer complaint:
           1. Retrieve past tickets for customer / issue.
           2. Retrieve governing enterprise policies.
           3. Guard against indirect prompt injection.
-          4. Invoke LLM for grounded reasoning.
+          4. Invoke LLM for grounded reasoning (or reuse precomputed_raw_response).
           5. Verify citation integrity against actually retrieved chunks.
           6. Enforce human-approval gating on sensitive actions.
         """
@@ -134,11 +138,14 @@ class ReasoningEngine:
         )
 
         # Step 4: LLM Generation with JSON retry mechanism
-        raw_response = self.llm_provider.generate(
-            prompt=user_prompt,
-            system_prompt=ENTERPRISE_SYSTEM_PROMPT,
-            temperature=0.0,
-        )
+        if precomputed_raw_response is not None:
+            raw_response = precomputed_raw_response
+        else:
+            raw_response = self.llm_provider.generate(
+                prompt=user_prompt,
+                system_prompt=ENTERPRISE_SYSTEM_PROMPT,
+                temperature=0.0,
+            )
 
         parse_error: Optional[str] = None
         output_data: Optional[Dict[str, Any]] = None
@@ -208,7 +215,7 @@ class ReasoningEngine:
             stripped_source_ids = set()
 
         # Step 6: Cross-check rationale text for stripped or unretrieved citation references
-        raw_rationale = output_data.get("rationale", "")
+        raw_rationale = str(output_data.get("rationale") or "")
         if self.enable_grounding_verification:
             hallucinated_refs = self._detect_unretrieved_references_in_text(
                 raw_rationale, valid_source_ids, stripped_source_ids
@@ -372,6 +379,7 @@ class ReasoningEngine:
             retrieval_summary=retrieval_summary,
             reasoning_time_ms=round(elapsed_ms, 2),
             model_used=self.llm_provider.__class__.__name__,
+            raw_llm_response=raw_response,
         )
 
     # ------------------------------------------------------------------
@@ -557,9 +565,11 @@ class ReasoningEngine:
         return verified, stripped_source_ids
 
     def _detect_unretrieved_references_in_text(
-        self, text: str, valid_source_ids: Set[str], stripped_source_ids: Set[str]
+        self, text: Optional[str], valid_source_ids: Set[str], stripped_source_ids: Set[str]
     ) -> Set[str]:
         """Cross-check rationale text to ensure it does not mention stripped or unretrieved source IDs."""
+        if not text or not isinstance(text, str):
+            return set()
         hallucinated = set()
 
         # 1. Any source_id explicitly stripped from the citations list

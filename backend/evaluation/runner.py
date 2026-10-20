@@ -52,6 +52,7 @@ from backend.reasoning.llm_provider import (
     GeminiLLMProvider,
     LLMProvider,
     MockLLMProvider,
+    OllamaLLMProvider,
     get_llm_provider,
 )
 from backend.reasoning.models import ActionType, ComplaintInvestigationRequest, NextBestAction
@@ -95,7 +96,14 @@ class ComparativeEvaluator:
         self.llm_provider = llm_provider or get_llm_provider()
 
         # Setup judge provider
-        if isinstance(self.llm_provider, GeminiLLMProvider):
+        if isinstance(self.llm_provider, OllamaLLMProvider):
+            self.judge_provider = OllamaLLMProvider(
+                model=os.environ.get("JUDGE_MODEL", "qwen2.5:7b"),
+                temperature=0.0,
+                num_ctx=8192,
+                seed=42,
+            )
+        elif isinstance(self.llm_provider, GeminiLLMProvider):
             self.judge_provider = GeminiLLMProvider(
                 model="gemini-3.1-flash-lite",
                 thinking_budget=0,
@@ -109,7 +117,7 @@ class ComparativeEvaluator:
             raise RuntimeError(
                 "MOCK GUARD TRIGGERED: A deterministic mock LLM cannot be used for multi-run "
                 "empirical evaluation (--runs >= 3). Multi-run evaluation requires a real stochastic LLM "
-                "(e.g. Gemini 3.6 Flash, temperature > 0.0) to measure output variance and compute "
+                "(e.g. Llama 3.1 8B, temperature > 0.0) to measure output variance and compute "
                 "defensible bootstrap confidence intervals. Mock LLMs are permitted strictly for CI smoke tests with --runs=1."
             )
 
