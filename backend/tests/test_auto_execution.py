@@ -97,6 +97,7 @@ class TestAutoExecutionPolicy:
     def test_condition_1_fails_on_escalation_action(self):
         """Action type ESCALATE_TICKET fails Condition 1 alone."""
         reasoning, request = make_valid_setup()
+        assert reasoning.recommendation is not None
         reasoning.recommendation.action_type = ActionType.ESCALATE_TICKET
         res = check_auto_execution(reasoning, request)
         assert res["condition_1_standard_action"] is False
@@ -108,6 +109,7 @@ class TestAutoExecutionPolicy:
     def test_condition_1_fails_on_escalation_level(self):
         """Having an escalation level (e.g. L1) fails Condition 1 alone."""
         reasoning, request = make_valid_setup()
+        assert reasoning.recommendation is not None
         reasoning.recommendation.escalation_level = EscalationLevel.L1
         res = check_auto_execution(reasoning, request)
         assert res["condition_1_standard_action"] is False
@@ -117,6 +119,7 @@ class TestAutoExecutionPolicy:
     def test_condition_1_fails_on_refund_amount(self):
         """Recommendation carrying an amount fails Condition 1."""
         reasoning, request = make_valid_setup()
+        assert reasoning.recommendation is not None
         reasoning.recommendation.amount = Decimal("25.00")
         res = check_auto_execution(reasoning, request)
         assert res["condition_1_standard_action"] is False
@@ -126,6 +129,7 @@ class TestAutoExecutionPolicy:
     def test_condition_1_fails_on_team_transfer(self):
         """Action type TRANSFER_TEAM fails Condition 1."""
         reasoning, request = make_valid_setup()
+        assert reasoning.recommendation is not None
         reasoning.recommendation.action_type = ActionType.TRANSFER_TEAM
         res = check_auto_execution(reasoning, request)
         assert res["condition_1_standard_action"] is False

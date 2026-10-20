@@ -11,6 +11,9 @@ import logging
 import os
 import re
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,7 @@ class MockLLMProvider(LLMProvider):
     Deterministic mock provider implementing business logic for Customer Complaint Escalation.
     Operates offline without API keys, suitable for tests, evaluation benchmarks, and CI.
     """
+    model = "mock-deterministic-engine"
 
     INJECTION_PATTERNS = [
         r"ignore\s+(all\s+)?previous\s+instructions",
@@ -244,20 +248,22 @@ class MockLLMProvider(LLMProvider):
                 except Exception:
                     refund_amount = None
 
-        rec_dict = {
+        params: Dict[str, Any] = {
+            "routing_rationale": rationale,
+            "target_team": target_team,
+        }
+        if refund_amount is not None:
+            params["amount"] = refund_amount
+
+        rec_dict: Dict[str, Any] = {
             "action_type": action_type,
             "target_team": target_team,
             "escalation_level": level,
             "urgency": urgency,
             "amount": refund_amount,
-            "parameters": {
-                "routing_rationale": rationale,
-                "target_team": target_team,
-            },
+            "parameters": params,
             "requires_approval": is_sensitive,
         }
-        if refund_amount is not None:
-            rec_dict["parameters"]["amount"] = refund_amount
 
         return json.dumps({
             "status": "RECOMMENDATION_READY",
@@ -359,45 +365,290 @@ class MockLLMProvider(LLMProvider):
 
 
 # ============================================================
-# Anthropic Claude Provider
+# Google Gemini Provider (Official google-genai SDK)
 # ============================================================
 
-class AnthropicLLMProvider(LLMProvider):
+from dataclasses import dataclass, field
+import random
+import time
+
+
+@dataclass
+class LLMGenerationResult:
+    """Detailed LLM output including text, failure classification, tokens, and cost."""
+    text: str = ""
+    status: str = "ok"  # "ok" | "model_refusal" | "blocked_by_provider" | "parse_failure" | "api_error"
+    prompt_tokens: int = 0
+    candidates_tokens: int = 0
+    thoughts_tokens: int = 0
+    total_tokens: int = 0
+    finish_reason: str = "STOP"
+    error_message: str = ""
+    latency_ms: float = 0.0
+    cost_usd: float = 0.0
+
+
+# Official Google Gemini Pricing Rates (Source: https://ai.google.dev/pricing, Oct 2026)
+GEMINI_PRICING = {
+    "gemini-3.6-flash": {
+        "input_per_token": 0.75 / 1_000_000.0,
+        "output_per_token": 3.75 / 1_000_000.0,
+        "thought_per_token": 3.75 / 1_000_000.0,
+    },
+    "gemini-3.1-flash-lite": {
+        "input_per_token": 0.25 / 1_000_000.0,
+        "output_per_token": 1.50 / 1_000_000.0,
+        "thought_per_token": 1.50 / 1_000_000.0,
+    },
+}
+
+
+class GeminiLLMProvider(LLMProvider):
     """
-    Claude provider using Anthropic Python SDK.
-    Requires ANTHROPIC_API_KEY environment variable.
+    Google Gemini provider using the official google-genai SDK.
+    Supports structured JSON mode, token tracking (input, output, thinking),
+    exponential backoff retry on 429/5xx, and rigorous failure classification.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        thinking_budget: int = 0,
+        seed: Optional[int] = 42,
+    ):
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "ANTHROPIC_API_KEY is not set. Set it in .env or pass it to AnthropicLLMProvider."
+                "GEMINI_API_KEY is not set. Set it in .env or pass it to GeminiLLMProvider."
             )
-        self.model = model or os.environ.get("LLM_MODEL", "claude-3-5-sonnet-20241022")
+        self.model = model or os.environ.get("LLM_MODEL", "gemini-3.6-flash")
+        self.thinking_budget = thinking_budget
+        self.seed = seed
+
+        # Token & cost accumulator
+        self.total_prompt_tokens = 0
+        self.total_candidates_tokens = 0
+        self.total_thoughts_tokens = 0
+        self.total_cost_usd = 0.0
+        self.last_result: Optional[LLMGenerationResult] = None
 
         try:
-            import anthropic
-            self.client = anthropic.Anthropic(api_key=self.api_key)
+            from google import genai
+            self.client = genai.Client(api_key=self.api_key)
         except ImportError:
             raise ImportError(
-                "The 'anthropic' package is not installed. Install it with: pip install anthropic"
+                "The 'google-genai' package is not installed. Install it with: pip install google-genai"
             )
 
-    def generate(self, prompt: str, system_prompt: str, temperature: float = 0.0) -> str:
-        """Call Claude API and return text response."""
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2048,
+    def generate_detailed(
+        self,
+        prompt: str,
+        system_prompt: str,
+        temperature: float = 0.3,
+        json_mode: bool = True,
+    ) -> LLMGenerationResult:
+        """
+        Execute API generation call with retries, returning a full LLMGenerationResult.
+        """
+        from google.genai import types
+
+        t0 = time.perf_counter()
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt if system_prompt else None,
             temperature=temperature,
-            system=system_prompt,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            seed=self.seed,
+            thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget),
+            response_mime_type="application/json" if json_mode else None,
         )
-        # Extract text from content blocks
-        text_blocks = [b.text for b in response.content if hasattr(b, "text")]
-        return "\n".join(text_blocks)
+
+        max_retries = 5
+        base_delay = 1.0
+
+        for attempt in range(max_retries + 1):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt,
+                    config=config,
+                )
+                latency = (time.perf_counter() - t0) * 1000
+
+                # Extract usage metadata
+                usage = getattr(response, "usage_metadata", None)
+                p_toks = getattr(usage, "prompt_token_count", 0) or 0
+                c_toks = getattr(usage, "candidates_token_count", 0) or 0
+                t_toks = getattr(usage, "thoughts_token_count", 0) or 0
+                tot_toks = getattr(usage, "total_token_count", 0) or (p_toks + c_toks + t_toks)
+
+                # Compute cost
+                rates = GEMINI_PRICING.get(self.model, GEMINI_PRICING["gemini-3.6-flash"])
+                call_cost = (
+                    p_toks * rates["input_per_token"]
+                    + c_toks * rates["output_per_token"]
+                    + t_toks * rates["thought_per_token"]
+                )
+                self.total_prompt_tokens += p_toks
+                self.total_candidates_tokens += c_toks
+                self.total_thoughts_tokens += t_toks
+                self.total_cost_usd += call_cost
+
+                # Check candidates & finish reason
+                candidates = getattr(response, "candidates", None) or []
+                if not candidates:
+                    res = LLMGenerationResult(
+                        text="",
+                        status="blocked_by_provider",
+                        prompt_tokens=p_toks,
+                        candidates_tokens=c_toks,
+                        thoughts_tokens=t_toks,
+                        total_tokens=tot_toks,
+                        finish_reason="NO_CANDIDATES",
+                        error_message="Provider returned zero candidates (filtered/blocked).",
+                        latency_ms=latency,
+                        cost_usd=call_cost,
+                    )
+                    self.last_result = res
+                    return res
+
+                cand = candidates[0]
+                finish_reason_obj = getattr(cand, "finish_reason", "STOP")
+                finish_reason_str = str(finish_reason_obj).split(".")[-1]
+
+                if finish_reason_str in ("SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "OTHER"):
+                    res = LLMGenerationResult(
+                        text="",
+                        status="blocked_by_provider",
+                        prompt_tokens=p_toks,
+                        candidates_tokens=c_toks,
+                        thoughts_tokens=t_toks,
+                        total_tokens=tot_toks,
+                        finish_reason=finish_reason_str,
+                        error_message=f"Generation blocked by provider safety filter ({finish_reason_str}).",
+                        latency_ms=latency,
+                        cost_usd=call_cost,
+                    )
+                    self.last_result = res
+                    return res
+
+                raw_text = getattr(response, "text", "") or ""
+
+                # Check for explicit model refusal
+                refusal_patterns = [
+                    r"\b(i cannot|i can't|refuse to|i am unable to|cannot fulfill|unethical|policy prevents)\b",
+                ]
+                is_refusal = any(re.search(pat, raw_text, re.IGNORECASE) for pat in refusal_patterns)
+                if is_refusal and not raw_text.strip().startswith("{"):
+                    res = LLMGenerationResult(
+                        text=raw_text,
+                        status="model_refusal",
+                        prompt_tokens=p_toks,
+                        candidates_tokens=c_toks,
+                        thoughts_tokens=t_toks,
+                        total_tokens=tot_toks,
+                        finish_reason=finish_reason_str,
+                        latency_ms=latency,
+                        cost_usd=call_cost,
+                    )
+                    self.last_result = res
+                    return res
+
+                # Check JSON validity if json_mode
+                if json_mode:
+                    try:
+                        json.loads(raw_text)
+                    except Exception as j_err:
+                        res = LLMGenerationResult(
+                            text=raw_text,
+                            status="parse_failure",
+                            prompt_tokens=p_toks,
+                            candidates_tokens=c_toks,
+                            thoughts_tokens=t_toks,
+                            total_tokens=tot_toks,
+                            finish_reason=finish_reason_str,
+                            error_message=f"JSON decoding failed: {j_err}",
+                            latency_ms=latency,
+                            cost_usd=call_cost,
+                        )
+                        self.last_result = res
+                        return res
+
+                res = LLMGenerationResult(
+                    text=raw_text,
+                    status="ok",
+                    prompt_tokens=p_toks,
+                    candidates_tokens=c_toks,
+                    thoughts_tokens=t_toks,
+                    total_tokens=tot_toks,
+                    finish_reason=finish_reason_str,
+                    latency_ms=latency,
+                    cost_usd=call_cost,
+                )
+                self.last_result = res
+                return res
+
+            except Exception as exc:
+                err_str = str(exc)
+                is_retryable = any(
+                    code in err_str.lower()
+                    for code in ["429", "resource_exhausted", "500", "503", "unavailable", "rate limit"]
+                )
+                if attempt < max_retries and is_retryable:
+                    sleep_time = min(60.0, base_delay * (2 ** attempt) + random.uniform(0.1, 0.5))
+                    logger.warning(
+                        "Gemini API call failed (%s); retrying in %.2fs (attempt %d/%d)...",
+                        exc, sleep_time, attempt + 1, max_retries
+                    )
+                    time.sleep(sleep_time)
+                    continue
+
+                # Unrecoverable or exhausted retries
+                latency = (time.perf_counter() - t0) * 1000
+                res = LLMGenerationResult(
+                    text="",
+                    status="api_error",
+                    error_message=f"API error: {err_str}",
+                    latency_ms=latency,
+                )
+                self.last_result = res
+                return res
+
+        # Fallback if loop ends
+        res = LLMGenerationResult(text="", status="api_error", error_message="Max retries exhausted.")
+        self.last_result = res
+        return res
+
+    def generate(self, prompt: str, system_prompt: str, temperature: float = 0.3) -> str:
+        """Standard LLMProvider interface implementation."""
+        # Determine if JSON mode is expected (enterprise system prompts expect JSON output)
+        expects_json = (
+            "json" in system_prompt.lower()
+            or "recommendation_ready" in prompt.lower()
+            or "investigation request" in prompt.lower()
+        )
+        res = self.generate_detailed(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            json_mode=expects_json,
+        )
+        if res.status == "blocked_by_provider":
+            # Return abstention JSON so reasoning engine handles provider safety blocks gracefully
+            return json.dumps({
+                "status": "ABSTAINED",
+                "abstention_reason": "INSUFFICIENT_EVIDENCE",
+                "customer_summary": "Query blocked by upstream AI safety filters.",
+                "identified_root_cause": "Provider safety filter triggered.",
+                "recommendation": None,
+                "rationale": "Upstream safety policy prevented generation.",
+                "citations": [],
+                "confidence_score": 0.0,
+                "requires_human_approval": False,
+                "indirect_injection_detected": True,
+            })
+        if res.status == "api_error":
+            raise RuntimeError(f"Gemini API generation failed: {res.error_message}")
+        return res.text
 
 
 # ============================================================
@@ -407,19 +658,20 @@ class AnthropicLLMProvider(LLMProvider):
 def get_llm_provider(provider_type: Optional[str] = None) -> LLMProvider:
     """
     Factory function returning the configured LLMProvider instance.
-    Defaults to MockLLMProvider when provider is 'mock' or when ANTHROPIC_API_KEY is missing.
+    Defaults to GeminiLLMProvider when GEMINI_API_KEY is present.
+    Defaults to MockLLMProvider when provider is 'mock' or when API key is missing.
     """
     choice = provider_type or os.environ.get("LLM_PROVIDER", "").lower()
 
-    if choice == "anthropic":
-        return AnthropicLLMProvider()
+    if choice == "mock":
+        return MockLLMProvider()
 
-    # If ANTHROPIC_API_KEY is explicitly present and choice is not explicitly 'mock', use Anthropic
-    if os.environ.get("ANTHROPIC_API_KEY") and choice != "mock":
+    if choice == "gemini" or os.environ.get("GEMINI_API_KEY"):
         try:
-            return AnthropicLLMProvider()
+            return GeminiLLMProvider()
         except Exception as e:
-            logger.warning("Failed to initialize Anthropic provider (%s), falling back to mock.", e)
+            logger.warning("Failed to initialize Gemini provider (%s), falling back to mock.", e)
             return MockLLMProvider()
 
     return MockLLMProvider()
+

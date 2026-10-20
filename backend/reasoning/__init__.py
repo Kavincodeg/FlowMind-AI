@@ -14,7 +14,7 @@ from backend.reasoning.models import (
 from backend.reasoning.llm_provider import (
     LLMProvider,
     MockLLMProvider,
-    AnthropicLLMProvider,
+    GeminiLLMProvider,
     get_llm_provider,
 )
 from backend.reasoning.engine import (
@@ -32,7 +32,7 @@ __all__ = [
     "ComplaintInvestigationRequest",
     "LLMProvider",
     "MockLLMProvider",
-    "AnthropicLLMProvider",
+    "GeminiLLMProvider",
     "get_llm_provider",
     "ReasoningEngine",
     "investigate_complaint",

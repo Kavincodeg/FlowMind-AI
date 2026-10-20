@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import contextmanager
-from typing import Generator, List, Optional
+from typing import Any, Generator, List, Optional
 from uuid import UUID
 
 import numpy as np
@@ -79,7 +79,9 @@ def upsert_document(doc: Document) -> UUID:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, (doc.source_type, doc.source_id, doc.title, meta_json))
-            row = cur.fetchone()
+            row: Any = cur.fetchone()
+    if not row:
+        raise RuntimeError("Failed to upsert document: no row returned")
     doc_id = UUID(str(row["doc_id"]))
     logger.debug("Upserted document %s -> %s", doc.source_id, doc_id)
     return doc_id
@@ -223,22 +225,23 @@ def ann_search(
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(sql2, base_params)
-            rows = cur.fetchall()
+            rows: List[Any] = cur.fetchall()
 
     results = []
     for row in rows:
-        score = float(row["score"])
+        r: Any = row
+        score = float(r["score"])
         if score < score_threshold:
             continue
-        meta = dict(row["metadata"])
+        meta = dict(r["metadata"])
         results.append(
             RetrievedChunk(
-                chunk_id=UUID(str(row["chunk_id"])),
-                doc_id=UUID(str(row["doc_id"])),
+                chunk_id=UUID(str(r["chunk_id"])),
+                doc_id=UUID(str(r["doc_id"])),
                 source_type=meta.get("source_type", ""),
                 source_id=meta.get("source_id", ""),
-                chunk_index=row["chunk_index"],
-                content=row["content"],
+                chunk_index=r["chunk_index"],
+                content=r["content"],
                 score=score,
                 metadata=meta,
             )

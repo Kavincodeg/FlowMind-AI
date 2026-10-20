@@ -15,7 +15,6 @@ import pytest
 
 from backend.reasoning.engine import ReasoningEngine, investigate_complaint
 from backend.reasoning.llm_provider import (
-    AnthropicLLMProvider,
     LLMProvider,
     MockLLMProvider,
     get_llm_provider,
@@ -168,10 +167,11 @@ class TestLLMProviders:
         # Injected command was ignored
         assert data["requires_human_approval"] is True
 
-    def test_anthropic_provider_missing_key_error(self):
+    def test_gemini_provider_missing_key_error(self):
+        from backend.reasoning.llm_provider import GeminiLLMProvider
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError, match="ANTHROPIC_API_KEY is not set"):
-                AnthropicLLMProvider()
+            with pytest.raises(ValueError, match="GEMINI_API_KEY is not set"):
+                GeminiLLMProvider()
 
     def test_provider_factory_default(self):
         provider = get_llm_provider("mock")
@@ -266,6 +266,7 @@ class TestReasoningGuardrails:
 
         # Critical Non-Negotiable: Must be overridden to True in code
         assert output.requires_human_approval is True
+        assert output.recommendation is not None
         assert output.recommendation.requires_approval is True
 
     def test_json_retry_succeeds_on_second_attempt(self):
@@ -592,6 +593,7 @@ class TestBenchmarkCases:
 
             # Assert Abstention Reason if applicable
             if "abstention_reason" in expected:
+                assert output.abstention_reason is not None
                 assert output.abstention_reason.value == expected["abstention_reason"], (
                     f"{case_id}: Expected abstention reason {expected['abstention_reason']}, got {output.abstention_reason}"
                 )
@@ -604,6 +606,7 @@ class TestBenchmarkCases:
 
             # Assert Escalation Level if applicable
             if "escalation_level" in expected and output.recommendation:
+                assert output.recommendation.escalation_level is not None
                 assert output.recommendation.escalation_level.value == expected["escalation_level"], (
                     f"{case_id}: Expected level {expected['escalation_level']}, got {output.recommendation.escalation_level}"
                 )

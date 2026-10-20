@@ -1,0 +1,182 @@
+[
+  {
+    "case_id": "CASE-001",
+    "claim": "Sample grounded factual assertion 1",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-002",
+    "claim": "Sample grounded factual assertion 2",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-003",
+    "claim": "Sample grounded factual assertion 3",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-004",
+    "claim": "Sample grounded factual assertion 4",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-005",
+    "claim": "Sample grounded factual assertion 5",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-006",
+    "claim": "Sample grounded factual assertion 6",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-007",
+    "claim": "Sample grounded factual assertion 7",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-008",
+    "claim": "Sample grounded factual assertion 8",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-009",
+    "claim": "Sample grounded factual assertion 9",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-010",
+    "claim": "Sample grounded factual assertion 10",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-011",
+    "claim": "Sample grounded factual assertion 11",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-012",
+    "claim": "Sample grounded factual assertion 12",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-013",
+    "claim": "Sample grounded factual assertion 13",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-014",
+    "claim": "Sample grounded factual assertion 14",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-015",
+    "claim": "Sample grounded factual assertion 15",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-016",
+    "claim": "Sample grounded factual assertion 16",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-017",
+    "claim": "Sample grounded factual assertion 17",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-018",
+    "claim": "Sample grounded factual assertion 18",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-019",
+    "claim": "Sample grounded factual assertion 19",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-020",
+    "claim": "Sample grounded factual assertion 20",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-021",
+    "claim": "Sample grounded factual assertion 21",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-022",
+    "claim": "Sample grounded factual assertion 22",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-023",
+    "claim": "Sample grounded factual assertion 23",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-024",
+    "claim": "Sample grounded factual assertion 24",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-025",
+    "claim": "Sample grounded factual assertion 25",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-026",
+    "claim": "Sample grounded factual assertion 26",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-027",
+    "claim": "Sample grounded factual assertion 27",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-028",
+    "claim": "Sample grounded factual assertion 28",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  },
+  {
+    "case_id": "CASE-029",
+    "claim": "Sample grounded factual assertion 29",
+    "human_grounding_score": 0,
+    "judge_grounding_score": 0
+  },
+  {
+    "case_id": "CASE-030",
+    "claim": "Sample grounded factual assertion 30",
+    "human_grounding_score": 1,
+    "judge_grounding_score": 1
+  }
+]

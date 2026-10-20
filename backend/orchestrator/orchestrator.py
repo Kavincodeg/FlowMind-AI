@@ -51,10 +51,12 @@ class WorkflowOrchestrator:
         reasoning_engine: Optional[ReasoningEngine] = None,
         connector: Optional[EnterpriseConnector] = None,
         audit_service: Optional[AuditService] = None,
+        bypass_approval_gate: bool = False,
     ):
         self.reasoning_engine = reasoning_engine or ReasoningEngine()
         self.connector = connector or MockEnterpriseConnector()
         self.audit_service = audit_service or get_audit_service()
+        self.bypass_approval_gate = bypass_approval_gate
         self._workflows: Dict[str, WorkflowInstance] = {}
         self._lock = threading.Lock()
 
@@ -159,7 +161,45 @@ class WorkflowOrchestrator:
 
             return instance
 
-        # 6. Sensitive Action: Gated behind Human Approval
+        # 6. Sensitive Action: Gated behind Human Approval (or bypassed in System D ablation)
+        if self.bypass_approval_gate:
+            assert isinstance(self.connector, MockEnterpriseConnector), (
+                "CRITICAL SAFETY VIOLATION: WorkflowOrchestrator with bypass_approval_gate=True "
+                f"MUST NEVER be bound to a live connector. Configured connector is '{type(self.connector).__name__}'."
+            )
+            if reasoning_output.recommendation:
+                instance.status = WorkflowStatus.EXECUTING
+                approval_token = generate_auto_execution_token(
+                    workflow_id, reasoning_output.recommendation.action_type.value
+                )
+                exec_req = ExecutionRequest(
+                    workflow_id=workflow_id,
+                    action=reasoning_output.recommendation,
+                    is_auto_executed=True,
+                    approval_token=approval_token,
+                    request_metadata={"customer_id": request.customer_id, "initiated_by": requester.user_id, "bypass_gate": True},
+                )
+                try:
+                    exec_res = self.connector.execute(exec_req)
+                except Exception as exc:
+                    exec_res = ExecutionResult(
+                        workflow_id=workflow_id,
+                        transaction_id=f"ERR-{workflow_id[:8].upper()}",
+                        connector_name="MockEnterpriseConnector",
+                        action_type=reasoning_output.recommendation.action_type,
+                        status="FAILED",
+                        details={"error_message": f"Connector execution exception: {str(exc)}"},
+                        executed_at=datetime.now(timezone.utc).isoformat(),
+                        latency_ms=0.0,
+                    )
+                instance.execution_record = exec_res
+                instance.status = WorkflowStatus.COMPLETED if exec_res.status == "SUCCESS" else WorkflowStatus.FAILED
+                instance.completed_at = datetime.now(timezone.utc).isoformat()
+                duration_ms = (time.perf_counter() - t0) * 1000
+                self._finalize_audit(instance, terminal_state=instance.status.value, duration_ms=duration_ms)
+                logger.info("Workflow %s: System D bypass executed: tx=%s", workflow_id, exec_res.transaction_id)
+                return instance
+
         instance.status = WorkflowStatus.PENDING_APPROVAL
         if reasoning_output.recommendation:
             due_at = compute_approval_due_at(

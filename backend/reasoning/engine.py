@@ -43,9 +43,11 @@ class ReasoningEngine:
         self,
         retriever_fn: Optional[Callable[[RetrievalQuery], RetrievalResult]] = None,
         llm_provider: Optional[LLMProvider] = None,
+        enable_grounding_verification: bool = True,
     ):
         self.retrieve = retriever_fn or default_retrieve
         self.llm_provider = llm_provider or get_llm_provider()
+        self.enable_grounding_verification = enable_grounding_verification
 
     def investigate(self, request: ComplaintInvestigationRequest) -> ReasoningOutput:
         """
@@ -190,23 +192,50 @@ class ReasoningEngine:
             )
 
         # Step 5: Post-generation citation integrity verification
-        valid_chunk_keys = self._collect_valid_chunk_keys(ticket_result, policy_result)
-        valid_source_ids = {k[1] for k in valid_chunk_keys}
-        verified_citations, stripped_source_ids = self._verify_citations(
-            output_data.get("citations", []), valid_chunk_keys
-        )
+        if self.enable_grounding_verification:
+            valid_chunk_keys = self._collect_valid_chunk_keys(ticket_result, policy_result)
+            valid_source_ids = {k[1] for k in valid_chunk_keys}
+            verified_citations, stripped_source_ids = self._verify_citations(
+                output_data.get("citations", []), valid_chunk_keys
+            )
+        else:
+            valid_chunk_keys = set()
+            valid_source_ids = set()
+            verified_citations = [
+                EvidenceCitation(**c) if isinstance(c, dict) else c
+                for c in output_data.get("citations", [])
+            ]
+            stripped_source_ids = set()
 
         # Step 6: Cross-check rationale text for stripped or unretrieved citation references
         raw_rationale = output_data.get("rationale", "")
-        hallucinated_refs = self._detect_unretrieved_references_in_text(
-            raw_rationale, valid_source_ids, stripped_source_ids
-        )
+        if self.enable_grounding_verification:
+            hallucinated_refs = self._detect_unretrieved_references_in_text(
+                raw_rationale, valid_source_ids, stripped_source_ids
+            )
+        else:
+            hallucinated_refs = set()
 
         status_str = output_data.get("status", "RECOMMENDATION_READY")
         abstention_reason_val = output_data.get("abstention_reason")
-        abstention_reason = (
-            AbstentionReason(abstention_reason_val) if abstention_reason_val else None
-        )
+        abstention_reason = None
+        if abstention_reason_val:
+            try:
+                abstention_reason = AbstentionReason(abstention_reason_val)
+            except ValueError:
+                val_upper = str(abstention_reason_val).upper()
+                if "MISSING" in val_upper or "INSUFFICIENT" in val_upper or "NO_" in val_upper:
+                    abstention_reason = AbstentionReason.INSUFFICIENT_EVIDENCE
+                elif "CONTRADICT" in val_upper or "CONFLICT" in val_upper:
+                    abstention_reason = AbstentionReason.CONTRADICTORY_EVIDENCE
+                elif "POLICY" in val_upper:
+                    abstention_reason = AbstentionReason.NO_RELEVANT_POLICY
+                elif "AMBIGUOUS" in val_upper:
+                    abstention_reason = AbstentionReason.AMBIGUOUS_COMPLAINT
+                elif "CONFIDENCE" in val_upper:
+                    abstention_reason = AbstentionReason.LOW_CONFIDENCE
+                else:
+                    abstention_reason = AbstentionReason.INSUFFICIENT_EVIDENCE
 
         # If rationale references unretrieved or stripped evidence, downgrade to CITATION_INTEGRITY_FAILURE
         if hallucinated_refs:
