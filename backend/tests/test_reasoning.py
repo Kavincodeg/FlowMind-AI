@@ -452,7 +452,7 @@ class TestReasoningGuardrails:
         assert "[Security Notice:" in output.rationale
 
     def test_omitted_confidence_score_defaults_to_zero_and_abstains(self):
-        """When model omits confidence_score, do not assume 0.8; default to 0.0 and abstain with LOW_CONFIDENCE."""
+        """When model omits confidence_score, it is a schema deviation / parse failure, resulting in ERROR (not LOW_CONFIDENCE)."""
         class OmittedConfidenceProvider(LLMProvider):
             def generate(
                 self,
@@ -490,9 +490,8 @@ class TestReasoningGuardrails:
         engine = ReasoningEngine(retriever_fn=dummy_retriever, llm_provider=OmittedConfidenceProvider())
         output = engine.investigate(ComplaintInvestigationRequest(issue_summary="Missing confidence check"))
 
+        assert output.status == "ERROR"
         assert output.confidence_score == 0.0
-        assert output.status == "ABSTAINED"
-        assert output.abstention_reason == AbstentionReason.LOW_CONFIDENCE
         assert output.recommendation is None
         assert output.requires_human_approval is False
 

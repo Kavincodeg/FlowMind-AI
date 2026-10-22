@@ -68,39 +68,102 @@ Retrieved Evidence Chunks:
 Does the retrieved evidence strictly support the claim?"""
 
 
+def extract_normalized_numeric_values(text: str) -> set[float]:
+    """
+    Extract and normalize all numeric values from text (handling currencies, commas, decimals, percentages).
+    E.g., '$49', '$49.00' -> 49.0; '1,200', '1200', '1200.00' -> 1200.0; '15%' -> 15.0.
+    Strips out dates first so that e.g. '2026-11-15' is not fragmented into numbers [2026, 11, 15].
+    """
+    # Strip ISO, slash, and textual dates first
+    clean_text = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", " ", text)
+    clean_text = re.sub(r"\b\d{1,2}/\d{1,2}/\d{4}\b", " ", clean_text)
+    months_pat = r"(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    clean_text = re.sub(rf"\b({months_pat})\.?\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{4}}\b", " ", clean_text, flags=re.IGNORECASE)
+    values = set()
+    matches = re.findall(r"\$?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)%?", clean_text)
+    for m in matches:
+        clean = m.replace(",", "").replace("$", "").strip()
+        try:
+            val = float(clean)
+            values.add(val)
+        except ValueError:
+            pass
+    return values
+
+
+def extract_normalized_dates(text: str) -> set[str]:
+    """
+    Extract and normalize dates into canonical 'YYYY-MM-DD' strings.
+    Supports ISO (2026-10-21), slash (10/21/2026 or 2026/10/21), and textual ('October 21, 2026', '21 Oct 2026').
+    """
+    dates = set()
+    # ISO dates: YYYY-MM-DD
+    for m in re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", text):
+        dates.add(m)
+    # Textual dates: Month DD, YYYY
+    months_pattern = r"(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    for m in re.finditer(rf"\b({months_pattern})\.?\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b", text, re.IGNORECASE):
+        mon_str, day_str, yr_str = m.group(1), m.group(2), m.group(3)
+        try:
+            from datetime import datetime
+            parsed = datetime.strptime(f"{mon_str[:3]} {day_str} {yr_str}", "%b %d %Y")
+            dates.add(parsed.strftime("%Y-%m-%d"))
+        except Exception:
+            pass
+    # Slash dates: MM/DD/YYYY
+    for m in re.finditer(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b", text):
+        try:
+            from datetime import datetime
+            parsed = datetime.strptime(f"{m.group(1)}/{m.group(2)}/{m.group(3)}", "%m/%d/%Y")
+            dates.add(parsed.strftime("%Y-%m-%d"))
+        except Exception:
+            pass
+    return dates
+
+
 def check_deterministic_entailment(claim: str, evidence_chunks: List[str]) -> Optional[Dict[str, Any]]:
     """
     Deterministic pre-check before calling LLM judge:
-    1. If evidence chunks list is empty -> unsupported.
-    2. If numeric/currency/date entities in claim do not appear in evidence text -> unsupported.
-    Returns None if check is inconclusive and LLM semantic judgment is required.
+    1. If evidence chunks list is empty -> UNSUPPORTED.
+    2. If numeric/currency/date entities in claim do not appear in evidence text -> UNSUPPORTED.
+    CRITICAL RULE: Pre-check may ONLY mark a claim UNSUPPORTED when a normalized entity is absent.
+    It must NEVER mark a claim SUPPORTED. Send everything else to the LLM judge (returns None).
     """
     if not claim or not claim.strip():
-        return {"is_supported": True, "confidence": 1.0, "rationale": "Empty claim requires no empirical grounding."}
+        # Never mark supported; pass to LLM judge / downstream handler
+        return None
 
     if not evidence_chunks:
         return {"is_supported": False, "confidence": 1.0, "rationale": "No evidence chunks provided to substantiate claim."}
 
     # Combined text of all provided evidence chunks
-    combined_evidence = " ".join(evidence_chunks).lower()
+    combined_evidence = " ".join(evidence_chunks)
 
-    # Extract numeric quantities, currency amounts, percentages, and ISO dates
-    entity_pattern = r"(?:\$\s*\d+(?:\.\d+)?|\b\d+(?:\.\d+)?%|\b\d{4}-\d{2}-\d{2}\b|\b\d+(?:\.\d+)?\s*(?:days|hours|months|years|dollars|usd)\b)"
-    entities = re.findall(entity_pattern, claim, re.IGNORECASE)
+    # 1. Normalize dates (ISO, slash, natural text)
+    ev_dates = extract_normalized_dates(combined_evidence)
+    claim_dates = extract_normalized_dates(claim)
 
-    for ent in entities:
-        clean_ent = ent.strip().lower()
-        # Extract the core digits
-        digits = re.findall(r"\d+(?:\.\d+)?", clean_ent)
-        if digits:
-            d_val = digits[0]
-            if d_val not in combined_evidence:
-                return {
-                    "is_supported": False,
-                    "confidence": 1.0,
-                    "rationale": f"Deterministic entity check: number/date '{ent}' in claim does not appear in cited evidence.",
-                }
+    for dt in claim_dates:
+        if dt not in ev_dates:
+            return {
+                "is_supported": False,
+                "confidence": 1.0,
+                "rationale": f"Deterministic entity check: normalized date '{dt}' in claim does not appear in cited evidence.",
+            }
 
+    # 2. Normalize numbers and currency ($49 vs $49.00, 1,200 vs 1200)
+    ev_numbers = extract_normalized_numeric_values(combined_evidence)
+    claim_numbers = extract_normalized_numeric_values(claim)
+
+    for num in claim_numbers:
+        if num not in ev_numbers:
+            return {
+                "is_supported": False,
+                "confidence": 1.0,
+                "rationale": f"Deterministic entity check: normalized numeric entity '{num}' in claim does not appear in cited evidence.",
+            }
+
+    # Inconclusive deterministically - strictly delegate semantic entailment verification to LLM judge
     return None
 
 

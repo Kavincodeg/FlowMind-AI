@@ -129,23 +129,47 @@ class ReasoningEngine:
         if code_injection_detected:
             logger.warning("Code-level scanner detected adversarial prompt injection patterns in retrieved context.")
 
+        # Collect actually retrieved source IDs and chunk keys dynamically
+        valid_chunk_keys = self._collect_valid_chunk_keys(ticket_result, policy_result)
+        allowed_source_ids = sorted(list({k[1] for k in valid_chunk_keys if k[1]}))
+        allowed_chunk_ids = sorted(list({f"{k[1]}#chunk_{k[2]}" for k in valid_chunk_keys if k[2] >= 0}))
+        # Dynamic citation enum allows both base source_id and full chunk_id
+        all_allowed_citation_ids = sorted(list(set(allowed_source_ids + allowed_chunk_ids)))
+
         user_prompt = build_investigation_prompt(
             customer_id=request.customer_id,
             customer_name=request.customer_name,
             issue_summary=request.issue_summary,
             ticket_context=ticket_context,
             policy_context=policy_context,
+            allowed_sources=all_allowed_citation_ids,
         )
 
+        # Build dynamic JSON schema enforcing citations enum to actually retrieved chunk IDs
+        import copy
+        dynamic_schema = copy.deepcopy(ReasoningOutput.model_json_schema())
+        if all_allowed_citation_ids and "$defs" in dynamic_schema and "EvidenceCitation" in dynamic_schema["$defs"]:
+            dynamic_schema["$defs"]["EvidenceCitation"]["properties"]["source_id"]["enum"] = all_allowed_citation_ids
+
         # Step 4: LLM Generation with JSON retry mechanism
+        # Engine must always run with structured output schema enforced
+        gen_kwargs: Dict[str, Any] = {
+            "prompt": user_prompt,
+            "system_prompt": ENTERPRISE_SYSTEM_PROMPT,
+            "temperature": 0.0,
+            "response_schema": dynamic_schema,
+        }
+
+        # Inspect provider signature so custom test mocks without response_schema don't crash
+        import inspect
+        sig = inspect.signature(self.llm_provider.generate)
+        has_schema = "response_schema" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+        call_gen_kwargs = gen_kwargs if has_schema else {k: v for k, v in gen_kwargs.items() if k != "response_schema"}
+
         if precomputed_raw_response is not None:
             raw_response = precomputed_raw_response
         else:
-            raw_response = self.llm_provider.generate(
-                prompt=user_prompt,
-                system_prompt=ENTERPRISE_SYSTEM_PROMPT,
-                temperature=0.0,
-            )
+            raw_response = self.llm_provider.generate(**call_gen_kwargs)
 
         parse_error: Optional[str] = None
         output_data: Optional[Dict[str, Any]] = None
@@ -167,11 +191,16 @@ class ReasoningEngine:
                 f"Your previous output failed JSON syntax or schema validation. "
                 f"Please correct the output and return strictly valid JSON conforming to the schema."
             )
-            retry_response = self.llm_provider.generate(
-                prompt=retry_prompt,
-                system_prompt=ENTERPRISE_SYSTEM_PROMPT,
-                temperature=0.0,
-            )
+            retry_kwargs: Dict[str, Any] = {
+                "prompt": retry_prompt,
+                "system_prompt": ENTERPRISE_SYSTEM_PROMPT,
+                "temperature": 0.0,
+                "response_schema": dynamic_schema,
+            }
+            call_retry_kwargs = retry_kwargs if has_schema else {k: v for k, v in retry_kwargs.items() if k != "response_schema"}
+
+
+            retry_response = self.llm_provider.generate(**call_retry_kwargs)
             try:
                 output_data = self._parse_and_validate_json(retry_response)
                 parse_error = None
@@ -179,14 +208,14 @@ class ReasoningEngine:
                 parse_error = f"Retry attempt failed: {e2}"
                 logger.error("LLM JSON retry failed: %s", parse_error)
 
-        # If both attempts failed, return status="ERROR"
+        # If both attempts failed, return status="ERROR" with schema_deviation root cause
         if parse_error is not None or output_data is None:
             elapsed_ms = (time.perf_counter() - t0) * 1000
             return ReasoningOutput(
                 status="ERROR",
                 abstention_reason=None,
                 customer_summary="Error parsing model response.",
-                identified_root_cause=f"Model output failed JSON parsing after retry: {parse_error}",
+                identified_root_cause=f"Failed JSON parsing after retry (schema_deviation: {parse_error})",
                 recommendation=None,
                 rationale=f"Model did not return valid JSON adhering to schema after retry. Error: {parse_error}",
                 citations=[],
@@ -261,25 +290,12 @@ class ReasoningEngine:
             final_rationale = raw_rationale
             recommendation_dict = output_data.get("recommendation")
 
-        # Step 7: Confidence score handling (strictly forbid defaulting to arbitrary high confidence)
+        # Step 7: Confidence score handling (strictly validated as float in _parse_and_validate_json)
         raw_confidence = output_data.get("confidence_score")
-        if raw_confidence is None:
-            logger.warning("Model omitted confidence_score. Forcing abstention with LOW_CONFIDENCE.")
-            status_str = "ABSTAINED"
-            abstention_reason = AbstentionReason.LOW_CONFIDENCE
-            recommendation_dict = None
-            confidence_val = 0.0
-        elif hallucinated_refs:
+        if hallucinated_refs:
             confidence_val = 0.0
         else:
-            try:
-                confidence_val = float(raw_confidence)
-            except (ValueError, TypeError):
-                logger.warning("Invalid confidence_score %r. Forcing abstention with LOW_CONFIDENCE.", raw_confidence)
-                status_str = "ABSTAINED"
-                abstention_reason = AbstentionReason.LOW_CONFIDENCE
-                recommendation_dict = None
-                confidence_val = 0.0
+            confidence_val = float(raw_confidence)
 
         # Step 8: Indirect injection defense (Layer 1 code scan + Layer 2 model report)
         model_injection_detected = bool(output_data.get("indirect_injection_detected", False))
@@ -490,10 +506,23 @@ class ReasoningEngine:
                 raise ValueError(f"Malformed JSON: {err}")
 
         if not isinstance(data, dict):
-            raise ValueError("Parsed JSON is not an object")
+            raise ValueError("Parsed JSON is not an object (schema_deviation)")
 
-        if "status" not in data:
-            raise ValueError("Missing required field 'status'")
+        # Validate required status field and enum values
+        if "status" not in data or not data["status"]:
+            raise ValueError("Missing required field 'status' (schema_deviation)")
+        if data["status"] not in ("RECOMMENDATION_READY", "ABSTAINED", "ERROR"):
+            raise ValueError(f"Invalid status '{data['status']}' (schema_deviation)")
+
+        # Validate required confidence_score field
+        if "confidence_score" not in data or data["confidence_score"] is None:
+            raise ValueError("Missing required field 'confidence_score' (schema_deviation)")
+        try:
+            c_val = float(data["confidence_score"])
+            if not (0.0 <= c_val <= 1.0):
+                raise ValueError("confidence_score must be between 0.0 and 1.0 (schema_deviation)")
+        except (ValueError, TypeError) as err:
+            raise ValueError(f"Malformed confidence_score: {err} (schema_deviation)")
 
         return data
 

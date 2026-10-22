@@ -66,8 +66,8 @@ def compute_cohens_kappa(human_labels: List[int], judge_labels: List[int]) -> Di
     }
 
 
-def load_ratings(file_path: Path) -> Tuple[List[int], List[int]]:
-    """Load binary ratings from either JSON or CSV."""
+def load_ratings(file_path: Path, factual_claims_only: bool = True) -> Tuple[List[int], List[int]]:
+    """Load binary ratings from either JSON or CSV, filtering strictly to factual claims."""
     human_scores: List[int] = []
     judge_scores: List[int] = []
 
@@ -75,19 +75,24 @@ def load_ratings(file_path: Path) -> Tuple[List[int], List[int]]:
         with open(file_path, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Support various column naming conventions
-                h_val = row.get("human_grounding_score") or row.get("human_label") or row.get("human") or "0"
-                j_val = row.get("judge_grounding_score") or row.get("judge_label") or row.get("judge") or "0"
-                human_scores.append(int(float(h_val)))
-                judge_scores.append(int(float(j_val)))
+                if factual_claims_only and row.get("case_type") and row.get("case_type") != "factual_assertion":
+                    continue
+                h_val = row.get("human_grounding_score") or row.get("human_label") or row.get("human")
+                j_val = row.get("judge_grounding_score") or row.get("judge_label") or row.get("judge")
+                if h_val is not None and j_val is not None and str(h_val).strip() != "" and str(j_val).strip() != "":
+                    human_scores.append(int(float(h_val)))
+                    judge_scores.append(int(float(j_val)))
     else:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             for item in data:
-                h_val = item.get("human_grounding_score", item.get("human_label", item.get("human", 0)))
-                j_val = item.get("judge_grounding_score", item.get("judge_label", item.get("judge", 0)))
-                human_scores.append(int(h_val))
-                judge_scores.append(int(j_val))
+                if factual_claims_only and item.get("case_type") and item.get("case_type") != "factual_assertion":
+                    continue
+                h_val = item.get("human_grounding_score", item.get("human_label", item.get("human")))
+                j_val = item.get("judge_grounding_score", item.get("judge_label", item.get("judge")))
+                if h_val is not None and j_val is not None and str(h_val).strip() != "" and str(j_val).strip() != "":
+                    human_scores.append(int(h_val))
+                    judge_scores.append(int(j_val))
 
     return human_scores, judge_scores
 

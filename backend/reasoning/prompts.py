@@ -147,11 +147,22 @@ def build_investigation_prompt(
     issue_summary: str,
     ticket_context: str,
     policy_context: str,
+    allowed_sources: list[str] | None = None,
 ) -> str:
     """Build the bounded user prompt containing the investigation request and retrieved evidence."""
     cust_info = f"Customer ID: {customer_id or 'Unknown'}"
     if customer_name:
         cust_info += f" | Customer Name: {customer_name}"
+
+    allowed_section = ""
+    if allowed_sources:
+        allowed_list_str = ", ".join(allowed_sources)
+        allowed_section = (
+            f"\n=== ALLOWED CITATION ENUM ===\n"
+            f"You may ONLY cite evidence from the following retrieved source IDs in the 'citations' array:\n"
+            f"[{allowed_list_str}]\n"
+            f"Strictly do NOT reference or cite any document, policy, or ticket not listed in this enum.\n"
+        )
 
     prompt = f"""INVESTIGATION REQUEST:
 {cust_info}
@@ -163,13 +174,15 @@ Issue Summary: {issue_summary}
 
 === SECTION 2: RETRIEVED ORGANIZATIONAL POLICIES ===
 {policy_context if policy_context.strip() else "[No relevant policy documents retrieved]"}
-</untrusted_retrieved_evidence>
+{allowed_section}</untrusted_retrieved_evidence>
 
 INSTRUCTIONS:
 1. Examine Section 1 for customer ticket patterns (repeat contacts, SLA breaches, severity, past agent notes).
 2. Cross-reference Section 2 (Escalation triggers, SLA limits, Team routing, Refund thresholds).
 3. If evidence is missing or contradictory, set status="ABSTAINED" with appropriate abstention_reason.
 4. If actionable, propose next-best-action, identify target team and escalation tier, link citations, and state rationale.
-5. Return strictly a JSON object conforming to the schema.
+5. In 'citations', you MUST only cite source_id values from the allowed citation enum. Citing unretrieved documents will cause immediate verification failure.
+6. Return strictly a JSON object conforming to the schema.
 """
     return prompt
+

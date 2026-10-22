@@ -60,6 +60,7 @@ Automated benchmark and evaluation harness with truthful execution disclosures:
   - **Recall@5**: 1.000 (exceeds target ≥ 0.600)
   - **Mean Reciprocal Rank (MRR)**: 1.000 (exceeds target ≥ 0.700)
   - **Mean Retrieval Latency**: 795.2 ms (real vector embedding + ANN similarity search)
+- **Evaluation Retrieval Implementation Disclosure**: **eval uses in-memory MiniLM retrieval, not pgvector/HNSW**. The multi-system comparative benchmark harness indexes all 187 chunks in-memory with dense `all-MiniLM-L6-v2` embeddings and exact cosine similarity rather than requiring an external PostgreSQL/pgvector instance.
 - **Structural Invariants**: Automated tests verifying that no sensitive action executes without approval, no abstention executes, and every terminal workflow produces a valid audit record.
 
 ---

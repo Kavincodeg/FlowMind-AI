@@ -6,3 +6,4 @@ while test_demo_mode.py explicitly tests DEMO_MODE=false behavior via monkeypatc
 import os
 
 os.environ.setdefault("DEMO_MODE", "true")
+os.environ.setdefault("LLM_PROVIDER", "mock")
