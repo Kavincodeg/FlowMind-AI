@@ -463,8 +463,10 @@ class GeminiLLMProvider(LLMProvider):
         self,
         prompt: str,
         system_prompt: str,
-        temperature: float = 0.3,
+        temperature: float = 0.0,
         json_mode: bool = True,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
     ) -> LLMGenerationResult:
         """
         Execute API generation call with retries, returning a full LLMGenerationResult.
@@ -476,13 +478,18 @@ class GeminiLLMProvider(LLMProvider):
             types = MagicMock()
 
         t0 = time.perf_counter()
-        config = types.GenerateContentConfig(
-            system_instruction=system_prompt if system_prompt else None,
-            temperature=temperature,
-            seed=self.seed,
-            thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget),
-            response_mime_type="application/json" if json_mode else None,
-        )
+        config_kwargs: Dict[str, Any] = {
+            "system_instruction": system_prompt if system_prompt else None,
+            "temperature": temperature,
+            "seed": self.seed,
+            "thinking_config": types.ThinkingConfig(thinking_budget=self.thinking_budget),
+            "response_mime_type": "application/json" if json_mode else None,
+        }
+        if max_tokens is not None:
+            config_kwargs["max_output_tokens"] = max_tokens
+        if response_schema is not None:
+            config_kwargs["response_schema"] = response_schema
+        config = types.GenerateContentConfig(**config_kwargs)
 
         max_retries = 5
         base_delay = 1.0
@@ -640,11 +647,19 @@ class GeminiLLMProvider(LLMProvider):
         self.last_result = res
         return res
 
-    def generate(self, prompt: str, system_prompt: str, temperature: float = 0.3) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: str,
+        temperature: float = 0.0,
+        max_tokens: Optional[int] = None,
+        response_schema: Optional[Any] = None,
+    ) -> str:
         """Standard LLMProvider interface implementation."""
         # Determine if JSON mode is expected (enterprise system prompts expect JSON output)
         expects_json = (
-            "json" in system_prompt.lower()
+            response_schema is not None
+            or "json" in system_prompt.lower()
             or "recommendation_ready" in prompt.lower()
             or "investigation request" in prompt.lower()
         )
@@ -653,6 +668,8 @@ class GeminiLLMProvider(LLMProvider):
             system_prompt=system_prompt,
             temperature=temperature,
             json_mode=expects_json,
+            max_tokens=max_tokens,
+            response_schema=response_schema,
         )
         if res.status == "blocked_by_provider":
             # Return abstention JSON so reasoning engine handles provider safety blocks gracefully
@@ -955,8 +972,20 @@ class OllamaLLMProvider(LLMProvider):
                         cost_usd=0.0,
                     )
                     self.last_result = res
-                    return res
-
+        # Fallback if retry loop exits without return
+        res = LLMGenerationResult(
+            text="",
+            status="api_error",
+            prompt_tokens=0,
+            candidates_tokens=0,
+            thoughts_tokens=0,
+            total_tokens=0,
+            finish_reason="ERROR",
+            error_message="Max retries exhausted.",
+            latency_ms=0.0,
+            cost_usd=0.0,
+        )
+        self.last_result = res
         return res
 
     def generate(
